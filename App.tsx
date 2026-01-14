@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import DashboardOverview from './components/DashboardOverview';
@@ -17,10 +17,12 @@ import ProductCreationWizard from './components/ProductCreationWizard';
 import StorefrontView from './components/StorefrontView';
 import WalletView from './components/WalletView';
 import { INITIAL_STATE } from './constants';
+import { fetchInitialState } from './services/api';
 import { AppState, Product, StoreInfo, Order, Customer, UserProfile, ProductOption } from './types';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -28,6 +30,16 @@ const App: React.FC = () => {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [aiProductContext, setAiProductContext] = useState<{ image: string, suggestions: { name: string, category: string, options?: ProductOption[] } } | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      const data = await fetchInitialState();
+      setState(data);
+      setIsLoading(false);
+    };
+    loadData();
+  }, []);
 
   const updateState = (updates: Partial<AppState>) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -52,8 +64,8 @@ const App: React.FC = () => {
       status: 'active',
       availabilityType: product.availabilityType || 'ready',
       deliveryDays: product.deliveryDays,
-      images: product.images && product.images.length > 0 
-        ? product.images 
+      images: product.images && product.images.length > 0
+        ? product.images
         : [`https://picsum.photos/seed/${product.name}/400/400`],
       deliveryOptions: product.deliveryOptions || ['courier'],
       options: product.options
@@ -164,11 +176,19 @@ const App: React.FC = () => {
     setActiveView('customers');
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#F8F9FA]">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-black"></div>
+      </div>
+    );
+  }
+
   if (!state.store.isLive || state.store.onboardingStep < 5) {
     return (
-      <OnboardingFlow 
-        store={state.store} 
-        updateStore={updateStore} 
+      <OnboardingFlow
+        store={state.store}
+        updateStore={updateStore}
         addProduct={(p) => addProduct(p)}
         onComplete={completeOnboarding}
       />
@@ -178,10 +198,10 @@ const App: React.FC = () => {
   // Handle Full-Screen Storefront Mode
   if (activeView === 'storefront') {
     return (
-      <StorefrontView 
-        store={state.store} 
-        products={state.products} 
-        onExit={() => setActiveView('dashboard')} 
+      <StorefrontView
+        store={state.store}
+        products={state.products}
+        onExit={() => setActiveView('dashboard')}
       />
     );
   }
@@ -192,10 +212,10 @@ const App: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         return (
-          <DashboardOverview 
-            store={state.store} 
-            orders={state.orders} 
-            conversations={state.conversations} 
+          <DashboardOverview
+            store={state.store}
+            orders={state.orders}
+            conversations={state.conversations}
             products={state.products}
             customers={state.customers}
             onNavigate={setActiveView}
@@ -207,9 +227,9 @@ const App: React.FC = () => {
         return <ProductList products={state.products} onAddProduct={() => setIsWizardOpen(true)} onSelectProduct={handleSelectProduct} {...commonProps} />;
       case 'product_detail':
         return selectedProduct ? (
-          <ProductDetail 
-            product={selectedProduct} 
-            onBack={navigateToProducts} 
+          <ProductDetail
+            product={selectedProduct}
+            onBack={navigateToProducts}
             onUpdate={(updates) => updateProduct(selectedProduct.id, updates)}
             onEditWithAi={() => setIsAssistantOpen(true)}
             {...commonProps}
@@ -217,19 +237,19 @@ const App: React.FC = () => {
         ) : <DashboardOverview store={state.store} orders={state.orders} conversations={state.conversations} products={state.products} customers={state.customers} onNavigate={setActiveView} onSelectOrder={handleSelectOrder} {...commonProps} />;
       case 'order_detail':
         return selectedOrder ? (
-          <OrderDetail 
-            order={selectedOrder} 
-            products={state.products} 
-            onBack={navigateToOrders} 
+          <OrderDetail
+            order={selectedOrder}
+            products={state.products}
+            onBack={navigateToOrders}
             onUpdate={(updates) => updateOrder(selectedOrder.id, updates)}
             {...commonProps}
           />
         ) : <DashboardOverview store={state.store} orders={state.orders} conversations={state.conversations} products={state.products} customers={state.customers} onNavigate={setActiveView} onSelectOrder={handleSelectOrder} {...commonProps} />;
       case 'messages':
         return (
-          <MessagesView 
-            conversations={state.conversations} 
-            products={state.products} 
+          <MessagesView
+            conversations={state.conversations}
+            products={state.products}
             orders={state.orders}
             store={state.store}
             onCreateOrder={handleCreateOrder}
@@ -243,10 +263,10 @@ const App: React.FC = () => {
         return <CustomersView customers={state.customers} onSelectCustomer={handleSelectCustomer} onAddCustomer={handleAddCustomer} {...commonProps} />;
       case 'customer_detail':
         return selectedCustomer ? (
-          <CustomerDetailView 
-            customer={selectedCustomer} 
-            orders={state.orders} 
-            onBack={navigateToCustomers} 
+          <CustomerDetailView
+            customer={selectedCustomer}
+            orders={state.orders}
+            onBack={navigateToCustomers}
             onSelectOrder={handleSelectOrder}
             {...commonProps}
           />
@@ -264,18 +284,18 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-[#F8F9FA] overflow-hidden relative">
-      <Sidebar 
-        activeView={activeView} 
-        setActiveView={setActiveView} 
+      <Sidebar
+        activeView={activeView}
+        setActiveView={setActiveView}
         isAssistantOpen={isAssistantOpen}
         toggleAssistant={() => setIsAssistantOpen(!isAssistantOpen)}
         language={state.user.language}
       />
       <div className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-500 ${isAssistantOpen ? 'mr-[400px]' : 'mr-0'}`}>
-        <TopBar 
-          store={state.store} 
-          user={state.user} 
-          onProfileClick={() => setActiveView('profile')} 
+        <TopBar
+          store={state.store}
+          user={state.user}
+          onProfileClick={() => setActiveView('profile')}
           onViewStore={() => setActiveView('storefront')}
           language={state.user.language}
           onToggleLanguage={(lang) => updateUser({ language: lang })}
