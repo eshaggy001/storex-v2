@@ -3,30 +3,30 @@ import { AppState } from './types';
 
 export const INITIAL_STATE: AppState = {
   store: {
-    name: "Storex Apparel",
-    category: "Apparel",
-    city: "Ulaanbaatar",
-    phone: "99110000",
-    logo: "https://images.unsplash.com/photo-1541535650810-10d26f5c2abb?auto=format&fit=crop&q=80&w=200",
-    onboardingStep: 5,
-    isLive: true,
+    name: "",
+    category: "",
+    city: "",
+    phone: "",
+    logo: "",
+    onboardingStep: 0,
+    isLive: false,
     connectedChannels: {
-      facebook: true,
-      instagram: true
+      facebook: false,
+      instagram: false
     },
     aiConfig: {
       tone: 'professional',
       responseDetail: 'balanced'
     },
     fulfillment: {
-      deliveryTypes: ['courier', 'pickup'],
-      paymentMethods: ['qpay', 'afterpay'],
-      afterpayProviders: ['storepay'],
+      deliveryTypes: [],
+      paymentMethods: [],
+      afterpayProviders: [],
       bankDetails: {
-        bankName: "Khan Bank",
-        accountNumber: "5000123456",
-        accountHolder: "Storex Demo LLC",
-        paymentNote: "Гүйлгээний утгад захиалгын дугаараа бичнэ үү"
+        bankName: "",
+        accountNumber: "",
+        accountHolder: "",
+        paymentNote: ""
       }
     },
     notifications: {
@@ -35,10 +35,10 @@ export const INITIAL_STATE: AppState = {
       paymentPending: false
     },
     tokenUsage: {
-      balance: 4200,
-      limit: 5000,
-      usedToday: 150,
-      estimatedDaysLeft: 28
+      balance: 100,
+      limit: 100,
+      usedToday: 0,
+      estimatedDaysLeft: 0
     }
   },
   user: {

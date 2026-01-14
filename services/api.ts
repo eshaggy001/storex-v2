@@ -97,8 +97,8 @@ export const fetchInitialState = async (): Promise<AppState> => {
             city: storeData.city,
             phone: storeData.phone,
             logo: storeData.logo,
-            onboardingStep: storeData.onboarding_step,
-            isLive: storeData.is_live,
+            onboardingStep: 0, // Force onboarding for demo
+            isLive: false, // Force onboarding for demo
             connectedChannels: storeData.connected_channels,
             aiConfig: storeData.ai_config,
             fulfillment: storeData.fulfillment,

@@ -191,6 +191,7 @@ const App: React.FC = () => {
         updateStore={updateStore}
         addProduct={(p) => addProduct(p)}
         onComplete={completeOnboarding}
+        language={state.user.language}
       />
     );
   }
