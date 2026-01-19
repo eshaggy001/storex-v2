@@ -1,69 +1,145 @@
 import React, { useState } from 'react';
-import { StoreInfo, Product } from '../types';
+import { StoreInfo } from '../types';
+import { validateReferralCode, transitionBusinessState } from '../stateTransitions';
 
 interface OnboardingProps {
   store: StoreInfo;
   updateStore: (updates: Partial<StoreInfo>) => void;
-  addProduct: (product: Product) => void;
   onComplete: () => void;
   language?: string;
 }
 
-const OnboardingFlow: React.FC<OnboardingProps> = ({ store, updateStore, addProduct, onComplete, language = 'en' }) => {
-  const [step, setStep] = useState(0);
+/**
+ * Storex Onboarding Flow - State-Driven Architecture
+ * 
+ * Flow Structure:
+ * 1. User Onboarding (ANONYMOUS → AUTHENTICATED)
+ *    - Sign Up / Log In / Password Reset
+ *    - No business context at this stage
+ * 
+ * 2. Business Onboarding (Referral-Gated)
+ *    - Referral Code Check
+ *    - If valid → Business Creation → ACTIVE
+ *    - If invalid/none → Access Request → Wait for approval
+ * 
+ * Key Principles:
+ * - User can sign up without creating business
+ * - Business creation requires valid referral code
+ * - No setup blocks main app access
+ * - Business becomes ACTIVE immediately after name + category
+ */
+const OnboardingFlow: React.FC<OnboardingProps> = ({ store, updateStore, onComplete, language = 'en' }) => {
+  // Onboarding stage: 'user' | 'business_referral' | 'business_create' | 'access_request'
+  const [stage, setStage] = useState<string>('user');
   const [isTyping, setIsTyping] = useState(false);
 
-  const [storeName, setStoreName] = useState('');
-  const [category, setCategory] = useState(language === 'mn' ? 'Хувцас & Загвар' : 'Fashion & Apparel');
-  const [productName, setProductName] = useState('');
-  const [productPrice, setProductPrice] = useState('');
+  // User onboarding state
+  const [authMode, setAuthMode] = useState<'signup' | 'login' | 'reset'>('signup');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Business onboarding state
+  const [referralCode, setReferralCode] = useState('');
+  const [referralError, setReferralError] = useState('');
+  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
+
+  const [businessName, setBusinessName] = useState('');
+  const [businessCategory, setBusinessCategory] = useState(language === 'mn' ? 'Хувцас & Загвар' : 'Fashion & Apparel');
+
+  // Access request state
+  const [accessRequestName, setAccessRequestName] = useState('');
+  const [accessRequestCategory, setAccessRequestCategory] = useState('');
+  const [accessRequestContact, setAccessRequestContact] = useState('');
 
   const t = (en: string, mn: string) => language === 'mn' ? mn : en;
 
-  const nextStep = () => {
+  const nextStage = (newStage: string) => {
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      setStep(prev => prev + 1);
+      setStage(newStage);
     }, 800);
   };
 
-  const handleBasicsSubmit = (e: React.FormEvent) => {
+  // ============================================================================
+  // USER ONBOARDING HANDLERS
+  // ============================================================================
+
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateStore({ name: storeName, category });
-    nextStep();
+    // In production: await api.signUp(email, password)
+    // For now, mock authentication
+    nextStage('business_referral');
   };
 
-  const handleProductSubmit = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newProduct: Product = {
-      id: 'prod_init_1',
-      name: productName,
-      price: parseFloat(productPrice),
-      description: t('Initial product added during onboarding', 'Онбордингийн үед нэмсэн анхны бүтээгдэхүүн'),
-      stock: 10,
-      category: 'Other',
-      status: 'active',
-      availabilityType: 'ready',
-      images: [`https://picsum.photos/seed/${productName}/200/200`],
-      deliveryOptions: ['courier', 'pickup']
-    };
-    addProduct(newProduct);
-    nextStep();
+    // In production: await api.login(email, password)
+    nextStage('business_referral');
   };
 
-  const handleChannelConnect = () => {
-    updateStore({ connectedChannels: { facebook: true, instagram: true } });
-    nextStep();
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // In production: await api.resetPassword(email)
+    alert(t('Password reset link sent to your email', 'Нууц үг сэргээх холбоосыг имэйл рүү илгээлээ'));
+    setAuthMode('login');
   };
 
-  const handleFinish = () => {
-    updateStore({ onboardingStep: 5, isLive: true });
+  // ============================================================================
+  // BUSINESS ONBOARDING HANDLERS (Referral-Gated)
+  // ============================================================================
+
+  const handleReferralSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReferralError('');
+    setIsValidatingReferral(true);
+
+    const isValid = await validateReferralCode(referralCode);
+    setIsValidatingReferral(false);
+
+    if (isValid) {
+      // Valid referral → proceed to business creation
+      nextStage('business_create');
+    } else {
+      // Invalid referral → show error
+      setReferralError(t(
+        'Invalid referral code. Please check and try again.',
+        'Буруу урилгын код. Дахин оролдоно уу.'
+      ));
+    }
+  };
+
+  const handleBusinessCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Update business to ACTIVE state
+    updateStore({
+      name: businessName,
+      category: businessCategory,
+      status: 'ACTIVE', // State machine: BUSINESS_CREATED → ACTIVE
+      referral_code_used: referralCode,
+    });
+
+    // Complete onboarding - user can now access main app
     onComplete();
   };
 
-  const totalSteps = 4;
-  const currentProgressStep = step >= 1 && step <= 4 ? step : 0;
+  const handleAccessRequest = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // In production: await api.submitAccessRequest({ name, category, contact })
+    // For now, just show the waiting screen
+    nextStage('access_requested');
+  };
+
+  const handleSkipReferral = () => {
+    // User doesn't have referral code → show access request form
+    nextStage('access_request');
+  };
+
+  // ============================================================================
+  // RENDER STAGES
+  // ============================================================================
 
   return (
     <div className="min-h-screen bg-[#1A1A1A] flex flex-col items-center justify-center relative overflow-hidden text-white font-['Manrope']">
@@ -72,198 +148,361 @@ const OnboardingFlow: React.FC<OnboardingProps> = ({ store, updateStore, addProd
 
       <div className="relative z-10 w-full max-w-lg px-8">
 
-        {step > 0 && step < 5 && (
-          <div className="mb-10 animate-fade-in">
-            <div className="flex justify-between items-end mb-3 leading-none">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
-                {t('Setup Progress', 'Тохиргооны явц')}
-              </span>
-              <span className="text-2xl font-bold text-[#EDFF8C]">{currentProgressStep}/{totalSteps}</span>
+        {/* ====================================================================== */}
+        {/* STAGE: USER ONBOARDING (Sign Up / Login / Password Reset) */}
+        {/* ====================================================================== */}
+
+        {stage === 'user' && (
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 bg-[#EDFF8C] rounded-3xl mx-auto flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(237,255,140,0.3)]">
+                <i className="fa-solid fa-bolt text-4xl text-black"></i>
+              </div>
+              <h1 className="text-5xl font-semibold tracking-tighter">Storex AI</h1>
+              <p className="text-lg text-slate-400 font-normal">
+                {t('Your AI sales person for social commerce', 'Таны AI худалдааны туслах')}
+              </p>
             </div>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4].map((s) => (
-                <div
-                  key={s}
-                  className={`h-2 flex-1 rounded-full transition-all duration-500 ${s <= currentProgressStep ? 'bg-[#EDFF8C] shadow-[0_0_10px_#EDFF8C]' : 'bg-white/10'
-                    }`}
-                />
-              ))}
-            </div>
+
+            {authMode === 'signup' && (
+              <form onSubmit={handleSignUp} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                    {t('Email or Phone', 'Имэйл эсвэл утас')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('your@email.com', 'your@email.com')}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                    {t('Password', 'Нууц үг')}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C]"
+                  />
+                </div>
+                <button type="submit" className="w-full bg-white text-black py-3 rounded-xl font-semibold hover:bg-[#EDFF8C] transition-colors">
+                  {t('Sign Up', 'Бүртгүүлэх')}
+                </button>
+                <div className="text-center text-sm text-slate-400">
+                  {t('Already have an account?', 'Бүртгэлтэй юу?')}{' '}
+                  <button type="button" onClick={() => setAuthMode('login')} className="text-white underline">
+                    {t('Log in', 'Нэвтрэх')}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {authMode === 'login' && (
+              <form onSubmit={handleLogin} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                    {t('Email or Phone', 'Имэйл эсвэл утас')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('your@email.com', 'your@email.com')}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                    {t('Password', 'Нууц үг')}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C]"
+                  />
+                </div>
+                <button type="submit" className="w-full bg-white text-black py-3 rounded-xl font-semibold hover:bg-[#EDFF8C] transition-colors">
+                  {t('Log In', 'Нэвтрэх')}
+                </button>
+                <div className="flex justify-between text-sm">
+                  <button type="button" onClick={() => setAuthMode('reset')} className="text-slate-400 hover:text-white">
+                    {t('Forgot password?', 'Нууц үг мартсан?')}
+                  </button>
+                  <button type="button" onClick={() => setAuthMode('signup')} className="text-white underline">
+                    {t('Sign up', 'Бүртгүүлэх')}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {authMode === 'reset' && (
+              <form onSubmit={handlePasswordReset} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                    {t('Email', 'Имэйл')}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('your@email.com', 'your@email.com')}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C]"
+                  />
+                </div>
+                <button type="submit" className="w-full bg-white text-black py-3 rounded-xl font-semibold hover:bg-[#EDFF8C] transition-colors">
+                  {t('Send Reset Link', 'Сэргээх холбоос илгээх')}
+                </button>
+                <div className="text-center text-sm">
+                  <button type="button" onClick={() => setAuthMode('login')} className="text-slate-400 hover:text-white">
+                    ← {t('Back to login', 'Нэвтрэх рүү буцах')}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
 
-        {step === 0 && (
-          <div className="text-center space-y-8 animate-fade-in">
-            <div className="w-20 h-20 bg-[#EDFF8C] rounded-3xl mx-auto flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(237,255,140,0.3)]">
-              <i className="fa-solid fa-bolt text-4xl text-black"></i>
-            </div>
-            <h1 className="text-5xl font-semibold tracking-tighter">Storex AI</h1>
-            <p className="text-lg text-slate-400 font-normal">
-              {t('Your automated retail partner.', 'Таны автоматжуулсан худалдааны туслах.')}
-            </p>
-            <button
-              onClick={() => setStep(1)}
-              className="w-full bg-white text-black py-4 rounded-2xl font-semibold text-lg hover:bg-[#EDFF8C] transition-all shadow-xl mt-8"
-            >
-              {t('Get Started', 'Эхлэх')}
-            </button>
-            <div className="text-[14px] text-slate-500 font-normal mt-4">
-              {t('Already have an account?', 'Бүртгэлтэй юу?')} <span className="text-white cursor-pointer underline font-medium">{t('Log in', 'Нэвтрэх')}</span>
-            </div>
-          </div>
-        )}
+        {/* ====================================================================== */}
+        {/* STAGE: BUSINESS REFERRAL CHECK */}
+        {/* ====================================================================== */}
 
-        {step === 1 && (
-          <div className="space-y-6">
-            <div className="bg-[#EDFF8C] text-black p-6 rounded-2xl rounded-tl-sm shadow-xl animate-slide-up">
-              <div className="flex items-center gap-3 mb-2 leading-none">
+        {stage === 'business_referral' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="bg-[#EDFF8C] text-black p-6 rounded-2xl rounded-tl-sm shadow-xl">
+              <div className="flex items-center gap-3 mb-2">
                 <i className="fa-solid fa-robot text-xs"></i>
                 <span className="text-[11px] font-semibold uppercase tracking-widest">{t('AI Assistant', 'AI Туслах')}</span>
               </div>
               <p className="text-lg font-medium leading-relaxed">
                 {t(
-                  "Hello! I'm here to help you set up your business. It will only take a minute. Ready?",
-                  "Сайн байна уу! Би таны бизнесийг тохируулахад туслахаар энд байна. Ганцхан минут л болно. Бэлэн үү?"
+                  "Welcome! To create your business on Storex, you'll need a referral code from an existing merchant. Do you have one?",
+                  "Тавтай морил! Storex дээр бизнес үүсгэхийн тулд урилгын код хэрэгтэй. Танд байгаа юу?"
                 )}
               </p>
             </div>
-            {!isTyping && (
-              <button
-                onClick={nextStep}
-                className="ml-auto block px-8 py-3 bg-white/10 border border-white/20 rounded-2xl font-medium hover:bg-white hover:text-black transition-all"
-              >
-                {t("Let's go", "Эхлэх")} <i className="fa-solid fa-arrow-right ml-2 text-xs"></i>
-              </button>
-            )}
-          </div>
-        )}
 
-        {step === 2 && (
-          <div className="space-y-6">
-            <div className="bg-[#EDFF8C] text-black p-6 rounded-2xl rounded-tl-sm shadow-xl">
-              <p className="text-lg font-medium">{t('First, what is the name of your store?', 'Эхлээд, таны дэлгүүрийн нэр юу вэ?')}</p>
-            </div>
-
-            <form onSubmit={handleBasicsSubmit} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4 animate-slide-up">
+            <form onSubmit={handleReferralSubmit} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2 leading-none">{t('Store Name', 'Дэлгүүрийн нэр')}</label>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  {t('Referral Code', 'Урилгын код')}
+                </label>
                 <input
                   type="text"
                   required
-                  value={storeName}
-                  onChange={(e) => setStoreName(e.target.value)}
-                  placeholder={t("e.g. Urban Threads", "ж.нь: Urban Threads")}
-                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C] font-normal"
+                  value={referralCode}
+                  onChange={(e) => {
+                    setReferralCode(e.target.value);
+                    setReferralError('');
+                  }}
+                  placeholder="STOREX-XXXXX"
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C] uppercase"
+                />
+                {referralError && (
+                  <p className="text-red-400 text-sm mt-2">{referralError}</p>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={isValidatingReferral}
+                className="w-full bg-white text-black py-3 rounded-xl font-semibold hover:bg-[#EDFF8C] transition-colors disabled:opacity-50"
+              >
+                {isValidatingReferral ? t('Validating...', 'Шалгаж байна...') : t('Continue', 'Үргэлжлүүлэх')}
+              </button>
+              <button
+                type="button"
+                onClick={handleSkipReferral}
+                className="w-full text-slate-400 text-sm hover:text-white"
+              >
+                {t("I don't have a referral code", 'Надад урилгын код байхгүй')}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ====================================================================== */}
+        {/* STAGE: BUSINESS CREATION (Valid Referral) */}
+        {/* ====================================================================== */}
+
+        {stage === 'business_create' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="bg-[#EDFF8C] text-black p-6 rounded-2xl rounded-tl-sm shadow-xl">
+              <p className="text-lg font-medium">
+                {t(
+                  "Perfect! Let's create your business. This will only take a moment.",
+                  "Гоё! Одоо бизнесээ үүсгэцгээе. Энэ хэдхэн секунд л болно."
+                )}
+              </p>
+            </div>
+
+            <form onSubmit={handleBusinessCreate} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  {t('Business Name', 'Бизнесийн нэр')}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder={t('e.g. Urban Threads', 'ж.нь: Urban Threads')}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C]"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2 leading-none">{t('Category', 'Ангилал')}</label>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  {t('Category', 'Ангилал')}
+                </label>
                 <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C] font-normal cursor-pointer"
+                  value={businessCategory}
+                  onChange={(e) => setBusinessCategory(e.target.value)}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C] cursor-pointer"
                 >
                   <option>{t('Fashion & Apparel', 'Хувцас & Загвар')}</option>
                   <option>{t('Home & Living', 'Гэр ахуй')}</option>
-                  <option>{t('Beauty', 'Гоо сайхан')}</option>
+                  <option>{t('Beauty & Personal Care', 'Гоо сайхан')}</option>
                   <option>{t('Electronics', 'Цахилгаан бараа')}</option>
+                  <option>{t('Food & Beverage', 'Хоол унд')}</option>
+                  <option>{t('Services', 'Үйлчилгээ')}</option>
                   <option>{t('Other', 'Бусад')}</option>
                 </select>
               </div>
               <button type="submit" className="w-full bg-white text-black py-3 rounded-xl font-semibold hover:bg-[#EDFF8C] transition-colors">
-                {t('Continue', 'Үргэлжлүүлэх')}
+                {t('Create Business', 'Бизнес үүсгэх')}
               </button>
             </form>
+
+            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl">
+              <p className="text-sm text-blue-200">
+                <i className="fa-solid fa-info-circle mr-2"></i>
+                {t(
+                  'Your business will be active immediately. You can add products and start selling right away!',
+                  'Таны бизнес шууд идэвхжинэ. Та бүтээгдэхүүн нэмж, зарж эхлэх боломжтой!'
+                )}
+              </p>
+            </div>
           </div>
         )}
 
-        {step === 3 && (
-          <div className="space-y-6">
+        {/* ====================================================================== */}
+        {/* STAGE: ACCESS REQUEST (No Referral Code) */}
+        {/* ====================================================================== */}
+
+        {stage === 'access_request' && (
+          <div className="space-y-6 animate-fade-in">
             <div className="bg-[#EDFF8C] text-black p-6 rounded-2xl rounded-tl-sm shadow-xl">
-              <p className="text-lg font-medium">{t("Great name! Let's add your first product so you can start selling immediately.", "Сайхан нэр байна! За одоо зарах эхний бүтээгдэхүүнээ нэмцгээе.")}</p>
+              <p className="text-lg font-medium">
+                {t(
+                  "No problem! Submit an access request and we'll notify you when access is available.",
+                  "Асуудалгүй! Хандалтын хүсэлт илгээгээрэй, бид танд хандалт нээгдэх үед мэдэгдэх болно."
+                )}
+              </p>
             </div>
 
-            <form onSubmit={handleProductSubmit} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4 animate-slide-up">
+            <form onSubmit={handleAccessRequest} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2 leading-none">{t('Product Name', 'Бүтээгдэхүүний нэр')}</label>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  {t('Business Name', 'Бизнесийн нэр')}
+                </label>
                 <input
                   type="text"
                   required
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  placeholder={t("e.g. Summer Linen Shirt", "ж.нь: Зуны цамц")}
-                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C] font-normal"
+                  value={accessRequestName}
+                  onChange={(e) => setAccessRequestName(e.target.value)}
+                  placeholder={t('Your business name', 'Таны бизнесийн нэр')}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C]"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2 leading-none">{t('Price ($)', 'Үнэ (₮)')}</label>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  {t('Category', 'Ангилал')}
+                </label>
+                <select
+                  value={accessRequestCategory}
+                  onChange={(e) => setAccessRequestCategory(e.target.value)}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C] cursor-pointer"
+                >
+                  <option value="">{t('Select category', 'Ангилал сонгох')}</option>
+                  <option>{t('Fashion & Apparel', 'Хувцас & Загвар')}</option>
+                  <option>{t('Home & Living', 'Гэр ахуй')}</option>
+                  <option>{t('Beauty & Personal Care', 'Гоо сайхан')}</option>
+                  <option>{t('Electronics', 'Цахилгаан бараа')}</option>
+                  <option>{t('Food & Beverage', 'Хоол унд')}</option>
+                  <option>{t('Services', 'Үйлчилгээ')}</option>
+                  <option>{t('Other', 'Бусад')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  {t('Contact (Email or Phone)', 'Холбоо барих (Имэйл эсвэл утас)')}
+                </label>
                 <input
-                  type="number"
+                  type="text"
                   required
-                  value={productPrice}
-                  onChange={(e) => setProductPrice(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C] font-normal"
+                  value={accessRequestContact}
+                  onChange={(e) => setAccessRequestContact(e.target.value)}
+                  placeholder={t('your@email.com or phone', 'your@email.com эсвэл утас')}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-[#EDFF8C]"
                 />
               </div>
               <button type="submit" className="w-full bg-white text-black py-3 rounded-xl font-semibold hover:bg-[#EDFF8C] transition-colors">
-                {t('Add Product', 'Бүтээгдэхүүн нэмэх')}
+                {t('Submit Request', 'Хүсэлт илгээх')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStage('business_referral')}
+                className="w-full text-slate-400 text-sm hover:text-white"
+              >
+                ← {t('Back', 'Буцах')}
               </button>
             </form>
           </div>
         )}
 
-        {step === 4 && (
-          <div className="space-y-6">
-            <div className="bg-[#EDFF8C] text-black p-6 rounded-2xl rounded-tl-sm shadow-xl">
-              <p className="text-lg font-medium">{t(`Where do you want to sell ${productName}?`, `${productName}-г хаана зарах вэ?`)}</p>
-            </div>
+        {/* ====================================================================== */}
+        {/* STAGE: ACCESS REQUESTED (Waiting for Approval) */}
+        {/* ====================================================================== */}
 
-            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md space-y-4 animate-slide-up">
-              <button onClick={handleChannelConnect} className="w-full bg-[#1877F2] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-3 hover:opacity-90 transition-opacity">
-                <i className="fa-brands fa-facebook text-xl"></i>
-                {t('Connect Facebook Page', 'Facebook хуудас холбох')}
-              </button>
-              <button onClick={handleChannelConnect} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-3 hover:opacity-90 transition-opacity">
-                <i className="fa-brands fa-instagram text-xl"></i>
-                {t('Connect Instagram', 'Instagram холбох')}
-              </button>
-              <button onClick={nextStep} className="w-full text-slate-400 text-[14px] font-medium hover:text-white mt-2">
-                {t('Skip for now', 'Түр алгасах')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 5 && (
+        {stage === 'access_requested' && (
           <div className="text-center space-y-8 animate-fade-in">
-            <div className="w-24 h-24 bg-[#EDFF8C] rounded-full mx-auto flex items-center justify-center mb-6 shadow-[0_0_50px_#EDFF8C] animate-bounce">
-              <i className="fa-solid fa-check text-4xl text-black"></i>
+            <div className="w-24 h-24 bg-blue-500/20 rounded-full mx-auto flex items-center justify-center mb-6 border-4 border-blue-500/30">
+              <i className="fa-solid fa-clock text-4xl text-blue-300"></i>
             </div>
-            <h1 className="text-4xl font-semibold tracking-tight">{t("You're ready to sell!", "Та зарахад бэлэн боллоо!")}</h1>
+            <h1 className="text-4xl font-semibold tracking-tight">
+              {t('Request Submitted', 'Хүсэлт илгээгдлээ')}
+            </h1>
             <div className="bg-white/5 p-6 rounded-2xl border border-white/10 text-left space-y-3">
-              <div className="flex items-center gap-3 text-slate-300 font-normal">
-                <i className="fa-solid fa-store text-[#EDFF8C] text-xs"></i>
-                <span>{storeName} {t('created', 'үүслээ')}</span>
-              </div>
-              <div className="flex items-center gap-3 text-slate-300 font-normal">
-                <i className="fa-solid fa-box text-[#EDFF8C] text-xs"></i>
-                <span>{t('1 Product active', '1 Бүтээгдэхүүн идэвхтэй')}</span>
-              </div>
-              <div className="flex items-center gap-3 text-slate-300 font-normal">
-                <i className="fa-solid fa-wand-magic-sparkles text-[#EDFF8C] text-xs"></i>
-                <span>{t('AI Assistant activated', 'AI Туслах идэвхжлээ')}</span>
-              </div>
+              <p className="text-slate-300">
+                {t(
+                  "Your access request has been received. We'll notify you when access is available.",
+                  "Таны хүсэлт хүлээн авлаа. Хандалт нээгдэх үед бид танд мэдэгдэх болно."
+                )}
+              </p>
+              <p className="text-sm text-slate-400">
+                {t(
+                  "In the meantime, you can explore Storex or contact us if you have questions.",
+                  "Энэ хооронд та Storex-тэй танилцах эсвэл асуулт байвал бидэнтэй холбогдож болно."
+                )}
+              </p>
             </div>
-            <button
-              onClick={handleFinish}
-              className="w-full bg-white text-black py-4 rounded-2xl font-semibold text-lg hover:bg-[#EDFF8C] transition-all shadow-xl"
-            >
-              {t('Go to Dashboard', 'Хяналтын самбар руу очих')}
-            </button>
+            <div className="text-sm text-slate-400">
+              {t('Questions?', 'Асуулт байна уу?')} <a href="mailto:support@storex.mn" className="text-white underline">support@storex.mn</a>
+            </div>
           </div>
         )}
 
+        {/* Typing indicator */}
         {isTyping && (
           <div className="absolute bottom-10 left-8 flex gap-1.5 p-4 bg-white/10 rounded-2xl backdrop-blur-md">
             <div className="w-2 h-2 bg-[#EDFF8C] rounded-full animate-bounce"></div>

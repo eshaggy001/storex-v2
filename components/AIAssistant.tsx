@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { processAssistantCommand, analyzeProductImage } from '../services/geminiService';
-import { AppState, Product } from '../types';
+import { AppState, Product, Order, Customer } from '../types';
 
 interface AIAssistantProps {
   state: AppState;
@@ -8,6 +8,8 @@ interface AIAssistantProps {
   onClose?: () => void;
   initialContext?: { image: string, suggestions: { name: string, category: string, options?: any[] } } | null;
   clearContext?: () => void;
+  currentView: string;
+  contextData?: Product | Order | Customer | null;
 }
 
 interface Message {
@@ -20,10 +22,18 @@ interface Message {
   isActionable?: boolean;
 }
 
-const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, initialContext, clearContext }) => {
+const AIAssistant: React.FC<AIAssistantProps> = ({
+  state,
+  updateState,
+  onClose,
+  initialContext,
+  clearContext,
+  currentView,
+  contextData
+}) => {
   const [messages, setMessages] = useState<Message[]>([
-    { 
-      role: 'assistant', 
+    {
+      role: 'assistant',
       type: 'text',
       content: "Hello! I'm your Storex AI. Upload product photos or tell me what you're selling, and I'll handle the rest.",
       timestamp: new Date()
@@ -43,6 +53,42 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
     }
   }, [messages, isTyping]);
 
+  // Context Awareness Handlers
+  useEffect(() => {
+    const getContextGreeting = () => {
+      switch (currentView) {
+        case 'products':
+          return "I can help you analyze inventory or add new products given an image.";
+        case 'product_detail':
+          return contextData ? `I see you're looking at ${(contextData as Product).name}. Want me to suggest an SEO description or marketing post?` : "Viewing product details.";
+        case 'orders':
+          return "Need help analyzing sales performance or finding a specific order?";
+        case 'order_detail':
+          return contextData ? `Order ${(contextData as Order).id} for ${(contextData as Order).customerName}. I can verify the payment or draft a confirmation message.` : "Viewing order details.";
+        case 'customers':
+          return "I can help you segment your customers or draft broadcast messages.";
+        case 'customer_detail':
+          return contextData ? `Customer ${(contextData as Customer).name}. I can summarize their history or suggest products they might like.` : "Viewing customer profile.";
+        case 'wallet':
+          return "I can help you track your payouts and verify BNPL transactions.";
+        case 'profile':
+          return "I'm here to help with your security and profile settings. I can explain why identity verification is important for secure payouts.";
+        default:
+          return null;
+      }
+    };
+
+    const greeting = getContextGreeting();
+    if (greeting) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        type: 'text',
+        content: greeting,
+        timestamp: new Date()
+      }]);
+    }
+  }, [currentView, contextData]);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -51,7 +97,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
     reader.onload = async () => {
       const base64 = (reader.result as string).split(',')[1];
       const fullBase64 = reader.result as string;
-      
+
       setMessages(prev => [...prev, {
         role: 'user',
         type: 'image',
@@ -79,7 +125,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
             images: [...(lastDraft?.images || []), fullBase64],
             options: suggestions.options || [],
             availabilityType: lastDraft?.availabilityType || 'ready',
-            status: 'active'
+            status: 'ACTIVE'
           },
           timestamp: new Date()
         }]);
@@ -100,7 +146,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
     setMessages(prev => [...prev, {
       role: 'assistant',
       type: 'text',
-      content: draft.availabilityType === 'ready' 
+      content: draft.availabilityType === 'ready'
         ? "Excellent. What is the price and how many do you have in stock?"
         : "Excellent. What is the price and how many days for delivery?",
       productDraft: draft,
@@ -119,12 +165,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
 
     try {
       const lastDraft = [...messages].reverse().find(m => m.productDraft)?.productDraft;
-      const response = await processAssistantCommand(userMsg, state.products, state.store);
+      const response = await processAssistantCommand(userMsg, state.products, state.store, undefined, currentView);
       setIsTyping(false);
-      
+
       if (response.action === 'ADD_PRODUCT' && response.productData) {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
+        setMessages(prev => [...prev, {
+          role: 'assistant',
           type: 'product_summary',
           productDraft: {
             ...lastDraft,
@@ -135,10 +181,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
           timestamp: new Date()
         }]);
       } else {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          type: 'text', 
-          content: response.textResponse, 
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          type: 'text',
+          content: response.textResponse,
           timestamp: new Date()
         }]);
       }
@@ -152,13 +198,17 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
   const finalizeProduct = (draft: Partial<Product>) => {
     const newProduct: Product = {
       id: Math.random().toString(36).substr(2, 9),
+      business_id: state.store.id,
+      created_by: 'AI',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       name: draft.name || 'Untitled',
       price: draft.price || 0,
       description: draft.description || '',
       stock: draft.availabilityType === 'ready' ? (draft.stock || 0) : 0,
       images: draft.images || [`https://picsum.photos/seed/${draft.name}/400/400`],
       category: (draft.category as any) || 'Other',
-      status: 'active',
+      status: 'ACTIVE',
       availabilityType: (draft.availabilityType as 'ready' | 'made_to_order') || 'ready',
       deliveryDays: draft.deliveryDays,
       deliveryOptions: draft.deliveryOptions || ['courier'],
@@ -166,7 +216,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
       discount: draft.discount
     };
 
-    updateState({ 
+    updateState({
       products: [newProduct, ...state.products]
     });
 
@@ -190,7 +240,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
   return (
     <div className="flex flex-col h-full bg-[#1A1A1A] overflow-hidden relative border-l border-white/5 font-['Manrope']">
       <div className={`absolute top-0 right-0 w-64 h-64 rounded-full opacity-5 blur-[100px] -translate-y-1/2 translate-x-1/2 transition-colors duration-1000 ${isEnergyLow ? 'bg-rose-500' : 'bg-[#EDFF8C]'}`}></div>
-      
+
       <div className={`p-6 border-b border-white/5 relative z-10 flex items-center justify-between bg-[#1A1A1A]/50 backdrop-blur-md`}>
         <div className="flex items-center gap-4">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${isEnergyLow ? 'bg-rose-500 text-white' : 'bg-[#EDFF8C] text-black'}`}>
@@ -211,12 +261,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar relative z-10">
         {messages.map((msg, i) => (
           <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-            <div className={`max-w-[90%] rounded-[1.5rem] ${
-              msg.role === 'user' 
-                ? (msg.type === 'image' ? 'bg-transparent' : 'bg-[#EDFF8C] text-black font-medium px-5 py-3.5 shadow-lg') 
-                : 'bg-white/5 text-slate-200 border border-white/10 backdrop-blur-xl p-1'
-            }`}>
-              
+            <div className={`max-w-[90%] rounded-[1.5rem] ${msg.role === 'user'
+              ? (msg.type === 'image' ? 'bg-transparent' : 'bg-[#EDFF8C] text-black font-medium px-5 py-3.5 shadow-lg')
+              : 'bg-white/5 text-slate-200 border border-white/10 backdrop-blur-xl p-1'
+              }`}>
+
               {msg.type === 'text' && <div className="px-4 py-3"><p className="text-[14px] leading-relaxed whitespace-pre-wrap font-normal">{msg.content}</p></div>}
               {msg.type === 'image' && (
                 <div className="rounded-2xl overflow-hidden border-2 border-[#EDFF8C] shadow-2xl w-48">
@@ -236,16 +285,16 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
                       <p className="text-[14px] font-semibold text-white leading-snug">{msg.productDraft.name}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                       <div>
-                         <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 block leading-none">Category</label>
-                         <p className="text-[13px] font-semibold text-[#EDFF8C]">{msg.productDraft.category}</p>
-                       </div>
-                       <div>
-                         <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 block leading-none">Structure</label>
-                         <p className="text-[13px] font-semibold text-white truncate">{msg.productDraft.options?.map(o => o.name).join(', ') || 'Standard'}</p>
-                       </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 block leading-none">Category</label>
+                        <p className="text-[13px] font-semibold text-[#EDFF8C]">{msg.productDraft.category}</p>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 block leading-none">Structure</label>
+                        <p className="text-[13px] font-semibold text-white truncate">{msg.productDraft.options?.map(o => o.name).join(', ') || 'Standard'}</p>
+                      </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => handleConfirmProduct(msg.productDraft!)}
                       className="w-full bg-[#EDFF8C] text-black py-2.5 rounded-xl text-[13px] font-medium hover:scale-[1.02] transition-all shadow-md"
                     >
@@ -265,35 +314,35 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
                     </div>
                   </div>
                   <div className="p-4 space-y-3">
-                     <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Price</span>
-                        <div className="text-right">
-                          {msg.productDraft.discount ? (
-                            <>
-                              <span className="text-[11px] font-normal text-slate-500 line-through mr-2">{msg.productDraft.price?.toLocaleString()}₮</span>
-                              <span className="text-[14px] font-semibold text-white">{calculateFinalPrice(msg.productDraft).toLocaleString()}₮</span>
-                            </>
-                          ) : (
-                            <span className="text-[14px] font-semibold text-white">{msg.productDraft.price?.toLocaleString()}₮</span>
-                          )}
-                        </div>
-                     </div>
-                     <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Stock</span>
-                        <span className="text-[14px] font-semibold text-[#EDFF8C]">{msg.productDraft.stock || 0} units</span>
-                     </div>
-                     {msg.productDraft.options && msg.productDraft.options.length > 0 && (
-                       <div className="flex justify-between items-center">
-                          <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Variants</span>
-                          <span className="text-[12px] font-normal text-slate-300 truncate max-w-[120px]">{msg.productDraft.options.map(o => o.name).join(' & ')}</span>
-                       </div>
-                     )}
-                     <button 
-                        onClick={() => finalizeProduct(msg.productDraft!)}
-                        className="w-full bg-[#EDFF8C] text-black py-3 rounded-xl text-[13px] font-medium uppercase tracking-wider hover:scale-[1.02] transition-all mt-2 shadow-md"
-                      >
-                        Publish Product
-                      </button>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Price</span>
+                      <div className="text-right">
+                        {msg.productDraft.discount ? (
+                          <>
+                            <span className="text-[11px] font-normal text-slate-500 line-through mr-2">{msg.productDraft.price?.toLocaleString()}₮</span>
+                            <span className="text-[14px] font-semibold text-white">{calculateFinalPrice(msg.productDraft).toLocaleString()}₮</span>
+                          </>
+                        ) : (
+                          <span className="text-[14px] font-semibold text-white">{msg.productDraft.price?.toLocaleString()}₮</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Stock</span>
+                      <span className="text-[14px] font-semibold text-[#EDFF8C]">{msg.productDraft.stock || 0} units</span>
+                    </div>
+                    {msg.productDraft.options && msg.productDraft.options.length > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Variants</span>
+                        <span className="text-[12px] font-normal text-slate-300 truncate max-w-[120px]">{msg.productDraft.options.map(o => o.name).join(' & ')}</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => finalizeProduct(msg.productDraft!)}
+                      className="w-full bg-[#EDFF8C] text-black py-3 rounded-xl text-[13px] font-medium uppercase tracking-wider hover:scale-[1.02] transition-all mt-2 shadow-md"
+                    >
+                      Publish Product
+                    </button>
                   </div>
                 </div>
               )}
@@ -326,12 +375,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ state, updateState, onClose, 
           </button>
           <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
           <div className="flex-1 relative">
-            <input 
-              type="text" 
-              value={inputValue} 
-              onChange={(e) => setInputValue(e.target.value)} 
-              placeholder="Type a message..." 
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-[14px] text-white focus:ring-2 focus:ring-[#EDFF8C] transition-all outline-none pr-12 placeholder:text-slate-600 font-normal" 
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Type a message..."
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-[14px] text-white focus:ring-2 focus:ring-[#EDFF8C] transition-all outline-none pr-12 placeholder:text-slate-600 font-normal"
             />
             <button type="submit" disabled={!inputValue.trim()} className={`absolute right-1.5 top-1.5 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg disabled:opacity-30 ${isEnergyLow ? 'bg-rose-500 text-white' : 'bg-[#EDFF8C] text-black'}`}>
               <i className="fa-solid fa-arrow-right text-[14px]"></i>

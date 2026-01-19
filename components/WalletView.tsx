@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { StoreInfo, Order } from '../types';
+import PaymentSetupModal from './PaymentSetupModal';
 
 interface WalletViewProps {
   store: StoreInfo;
@@ -19,6 +20,7 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'payouts' | 'settings'>('overview');
   const [bankForm, setBankForm] = useState(store.fulfillment.bankDetails || { bankName: '', accountNumber: '', accountHolder: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const t = {
     mn: {
@@ -137,7 +139,7 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
 
   return (
     <div className="max-w-6xl mx-auto pb-20 animate-fade-in font-['Manrope']">
-      
+
       {/* Header & Tabs */}
       <div className="space-y-8 mb-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -155,11 +157,10 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-                  activeTab === tab.id 
-                    ? 'bg-[#1A1A1A] text-white shadow-md' 
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                }`}
+                className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeTab === tab.id
+                  ? 'bg-[#1A1A1A] text-white shadow-md'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -171,7 +172,7 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
       {/* --- TAB 1: OVERVIEW --- */}
       {activeTab === 'overview' && (
         <div className="space-y-8 animate-slide-up">
-          
+
           {/* Balance Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-[#1A1A1A] text-white p-8 rounded-[2.5rem] relative overflow-hidden shadow-xl group">
@@ -217,7 +218,7 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
 
           {/* Activity Snapshot & Wallet Status */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
+
             {/* Snapshot */}
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
               <div className="flex justify-between items-center mb-6">
@@ -256,7 +257,7 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
                 </div>
               </div>
               <div className="mt-6 pt-6 border-t border-slate-50">
-                <button 
+                <button
                   onClick={() => setActiveTab('settings')}
                   className="text-[11px] font-bold uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-2"
                 >
@@ -291,23 +292,22 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
                   .filter(o => o.paymentStatus !== 'unpaid')
                   .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                   .map(order => (
-                  <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-5 px-8 text-sm font-bold text-slate-900">{new Date(order.createdAt).toLocaleDateString()}</td>
-                    <td className="py-5 px-8">
-                      <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">{lang.payment}</span>
-                    </td>
-                    <td className="py-5 px-8 text-sm font-medium text-indigo-600">{order.id}</td>
-                    <td className="py-5 px-8 text-xs font-bold text-slate-500 uppercase">{order.paymentMethod.replace('_', ' ')}</td>
-                    <td className="py-5 px-8 text-sm font-black text-emerald-600 text-right">+{order.total.toLocaleString()}₮</td>
-                    <td className="py-5 px-8 text-right">
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
-                        order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                      }`}>
-                        {order.paymentStatus}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                    <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-5 px-8 text-sm font-bold text-slate-900">{new Date(order.createdAt).toLocaleDateString()}</td>
+                      <td className="py-5 px-8">
+                        <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">{lang.payment}</span>
+                      </td>
+                      <td className="py-5 px-8 text-sm font-medium text-indigo-600">{order.id}</td>
+                      <td className="py-5 px-8 text-xs font-bold text-slate-500 uppercase">{order.paymentMethod.replace('_', ' ')}</td>
+                      <td className="py-5 px-8 text-sm font-black text-emerald-600 text-right">+{order.total.toLocaleString()}₮</td>
+                      <td className="py-5 px-8 text-right">
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                          }`}>
+                          {order.paymentStatus}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 {orders.filter(o => o.paymentStatus !== 'unpaid').length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-slate-400 font-medium italic">{lang.noTx}</td>
@@ -324,21 +324,77 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
         <div className="space-y-8 animate-slide-up">
           {/* Payout Summary */}
           <div className="bg-[#1A1A1A] text-white p-10 rounded-[2.5rem] relative overflow-hidden shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
-             <div className="relative z-10 space-y-2">
-                <p className="text-[10px] font-bold text-[#EDFF8C] uppercase tracking-widest">{lang.payout.total}</p>
-                <h2 className="text-5xl font-black text-white tracking-tighter">{financials.totalPaidOut.toLocaleString()}₮</h2>
-             </div>
-             <div className="relative z-10 flex gap-12 text-right">
-                <div>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{lang.payout.next}</p>
-                   <p className="text-xl font-bold text-white">{lang.payout.monday}</p>
+            <div className="relative z-10 space-y-2">
+              <p className="text-[10px] font-bold text-[#EDFF8C] uppercase tracking-widest">{lang.payout.total}</p>
+              <h2 className="text-5xl font-black text-white tracking-tighter">{financials.totalPaidOut.toLocaleString()}₮</h2>
+            </div>
+            <div className="relative z-10 flex gap-12 text-right">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{lang.payout.next}</p>
+                <p className="text-xl font-bold text-white">{lang.payout.monday}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{lang.payout.freq}</p>
+                <p className="text-xl font-bold text-white">{lang.payout.weekly}</p>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#EDFF8C] rounded-full opacity-5 blur-[80px] translate-x-1/2 -translate-y-1/2"></div>
+          </div>
+
+          {/* Actionable Payout Section */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm mb-8 animate-slide-up">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Available for Payout</h3>
+                <p className="text-sm text-slate-500 font-medium">Earnings cleared and ready to withdraw.</p>
+              </div>
+              <div className="text-right">
+                <h2 className="text-3xl font-black text-slate-900 tracking-tighter">{financials.availableBalance.toLocaleString()}₮</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  {financials.pendingBalance > 0 ? `+${financials.pendingBalance.toLocaleString()}₮ Pending` : 'No pending funds'}
+                </p>
+              </div>
+            </div>
+
+            {store.readiness.payout_ready ? (
+              <button
+                disabled={financials.availableBalance <= 0}
+                className="w-full py-4 bg-[#EDFF8C] text-black rounded-2xl font-bold uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                onClick={() => alert("Payout request submitted! (Mock)")}
+              >
+                Request Payout <i className="fa-solid fa-arrow-right"></i>
+              </button>
+            ) : (
+              <div className="bg-rose-50 border border-rose-100 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                    <i className="fa-solid fa-shield-halved"></i>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-rose-800 mb-1">Identity Verification Required</h4>
+                    <p className="text-xs text-rose-600 mb-4 leading-relaxed">
+                      To comply with financial regulations, you must verify your identity (DAN) before requesting payouts.
+                    </p>
+                    <button
+                      onClick={() => {
+                        const confirm = window.confirm("Mock: Verify Identity via DAN system?");
+                        if (confirm) {
+                          onUpdateStore({
+                            readiness: {
+                              ...store.readiness,
+                              payout_ready: true
+                            }
+                          });
+                        }
+                      }}
+                      className="px-6 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-rose-700 transition-colors shadow-sm"
+                    >
+                      Verify Identity
+                    </button>
+                  </div>
                 </div>
-                <div>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{lang.payout.freq}</p>
-                   <p className="text-xl font-bold text-white">{lang.payout.weekly}</p>
-                </div>
-             </div>
-             <div className="absolute top-0 right-0 w-64 h-64 bg-[#EDFF8C] rounded-full opacity-5 blur-[80px] translate-x-1/2 -translate-y-1/2"></div>
+              </div>
+            )}
           </div>
 
           {/* Payout History */}
@@ -382,7 +438,7 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
       {/* --- TAB 4: SETTINGS --- */}
       {activeTab === 'settings' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up">
-          
+
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-6">{lang.account}</h3>
@@ -390,20 +446,20 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">{lang.bank.name}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={bankForm.bankName}
-                      onChange={e => setBankForm({...bankForm, bankName: e.target.value})}
+                      onChange={e => setBankForm({ ...bankForm, bankName: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 font-bold text-slate-900 outline-none focus:border-black transition-all"
                       placeholder="e.g. Khan Bank"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">{lang.bank.number}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={bankForm.accountNumber}
-                      onChange={e => setBankForm({...bankForm, accountNumber: e.target.value})}
+                      onChange={e => setBankForm({ ...bankForm, accountNumber: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 font-bold text-slate-900 outline-none focus:border-black transition-all"
                       placeholder="e.g. 5000000000"
                     />
@@ -411,43 +467,50 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">{lang.bank.holder}</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={bankForm.accountHolder}
-                    onChange={e => setBankForm({...bankForm, accountHolder: e.target.value})}
+                    onChange={e => setBankForm({ ...bankForm, accountHolder: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 font-bold text-slate-900 outline-none focus:border-black transition-all"
                     placeholder="e.g. Company Name LLC"
                   />
                 </div>
-                
+
                 <div className="pt-4 flex items-center justify-between">
-                   <p className="text-xs text-slate-400 font-medium">Last updated: {new Date().toLocaleDateString()}</p>
-                   <button 
-                    type="submit" 
+                  <p className="text-xs text-slate-400 font-medium">Last updated: {new Date().toLocaleDateString()}</p>
+                  <button
+                    type="submit"
                     disabled={isSaving}
                     className="px-8 py-4 bg-[#1A1A1A] text-white rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-black transition-all shadow-lg flex items-center gap-2"
-                   >
-                     {isSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
-                     {lang.bank.save}
-                   </button>
+                  >
+                    {isSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
+                    {lang.bank.save}
+                  </button>
                 </div>
               </form>
             </div>
           </div>
 
           <div className="space-y-8">
-            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-6">{lang.methods}</h3>
+            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-slate-900">{lang.methods}</h3>
+                <button
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="text-xs font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-800 transition-colors"
+                >
+                  Manage
+                </button>
+              </div>
               <div className="space-y-3">
                 {(['qpay', 'afterpay', 'online', 'bank_transfer', 'cash_on_delivery'] as const).filter(m => store.fulfillment.paymentMethods.includes(m)).map((pm) => (
                   <div key={pm} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-3">
-                      <i className={`fa-solid ${
-                        pm === 'qpay' ? 'fa-qrcode' : 
-                        pm === 'afterpay' ? 'fa-clock' : 
-                        pm === 'cash_on_delivery' ? 'fa-wallet' : 
-                        'fa-credit-card'
-                      } text-slate-400`}></i>
+                      <i className={`fa-solid ${pm === 'qpay' ? 'fa-qrcode' :
+                        pm === 'afterpay' ? 'fa-clock' :
+                          pm === 'cash_on_delivery' ? 'fa-wallet' :
+                            'fa-credit-card'
+                        } text-slate-400`}></i>
                       <span className="text-sm font-bold text-slate-700">{getPaymentLabel(pm)}</span>
                     </div>
                     <i className="fa-solid fa-check-circle text-emerald-500"></i>
@@ -463,6 +526,12 @@ const WalletView: React.FC<WalletViewProps> = ({ store, orders, onUpdateStore, u
         </div>
       )}
 
+      <PaymentSetupModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        store={store}
+        onUpdateStore={onUpdateStore}
+      />
     </div>
   );
 };

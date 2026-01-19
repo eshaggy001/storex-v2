@@ -5,6 +5,7 @@ import { INITIAL_STATE } from '../constants';
 // Helper to map DB Product to App Product
 const mapProduct = (data: any): Product => ({
     id: data.id,
+    business_id: data.business_id,
     name: data.name,
     price: Number(data.price),
     description: data.description,
@@ -12,6 +13,9 @@ const mapProduct = (data: any): Product => ({
     images: data.images || [],
     category: data.category,
     status: data.status,
+    created_by: data.created_by,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
     availabilityType: data.availability_type,
     deliveryDays: data.delivery_days,
     deliveryOptions: data.delivery_options || [],
@@ -26,13 +30,17 @@ const mapProduct = (data: any): Product => ({
 // Helper to map DB Customer to App Customer
 const mapCustomer = (data: any): Customer => ({
     id: data.id,
+    business_id: data.business_id,
     name: data.name,
-    phoneNumber: data.phone_number,
+    phone: data.phone_number,
     channel: data.channel,
+    total_orders: data.orders_count,
+    total_spend: Number(data.total_spent),
     ordersCount: data.orders_count,
     totalSpent: Number(data.total_spent),
     firstInteraction: data.first_interaction,
     lastInteraction: data.last_interaction,
+    created_at: data.created_at,
     status: data.status,
     aiInsight: data.ai_insight,
     source: data.source,
@@ -42,6 +50,8 @@ const mapCustomer = (data: any): Customer => ({
 // Helper to map DB Order to App Order
 const mapOrder = (data: any, items: any[]): Order => ({
     id: data.id,
+    business_id: data.business_id,
+    customer_id: data.customer_id,
     customerName: data.customer_name || '',
     phoneNumber: data.phone_number,
     channel: data.channel,
@@ -50,10 +60,15 @@ const mapOrder = (data: any, items: any[]): Order => ({
         quantity: item.quantity,
     })),
     total: Number(data.total),
+    total_amount: Number(data.total),
     status: data.status,
-    createdAt: data.created_at,
+    order_status: data.order_status,
+    payment_status: data.payment_status,
+    delivery_status: data.delivery_status,
+    source: data.source,
+    created_by: data.created_by,
+    created_at: data.created_at,
     isAiGenerated: data.is_ai_generated,
-    paymentStatus: data.payment_status,
     paymentMethod: data.payment_method,
     deliveryMethod: data.delivery_method,
     deliveryAddress: data.delivery_address,
@@ -80,6 +95,12 @@ const mapConversation = (data: any, messages: any[]): Conversation => ({
 });
 
 export const fetchInitialState = async (): Promise<AppState> => {
+    // If Supabase is not configured, return mock data immediately
+    if (!supabase) {
+        console.log('Supabase not configured. Using mock data from INITIAL_STATE.');
+        return INITIAL_STATE;
+    }
+
     try {
         // 1. Fetch Store
         const { data: storeData, error: storeError } = await supabase
@@ -92,11 +113,15 @@ export const fetchInitialState = async (): Promise<AppState> => {
 
         // Map store data
         const store: StoreInfo = {
+            id: storeData.id,
+            owner_user_id: storeData.owner_user_id,
             name: storeData.name,
             category: storeData.category,
             city: storeData.city,
             phone: storeData.phone,
-            logo: storeData.logo,
+            logo_url: storeData.logo,
+            status: storeData.status,
+            created_at: storeData.created_at,
             onboardingStep: 0, // Force onboarding for demo
             isLive: false, // Force onboarding for demo
             connectedChannels: storeData.connected_channels,
@@ -104,6 +129,13 @@ export const fetchInitialState = async (): Promise<AppState> => {
             fulfillment: storeData.fulfillment,
             notifications: storeData.notifications,
             tokenUsage: storeData.token_usage,
+            readiness: storeData.readiness || {
+                payment_enabled: false,
+                delivery_configured: false,
+                products_available: false,
+                ai_energy_ok: true,
+                payout_ready: false
+            }
         };
 
         const user = storeData.user_profile; // We stored user profile in the store table for now

@@ -14,11 +14,11 @@ import SettingsView from './components/SettingsView';
 import ProfileView from './components/ProfileView';
 import OnboardingFlow from './components/OnboardingFlow';
 import ProductCreationWizard from './components/ProductCreationWizard';
-import StorefrontView from './components/StorefrontView';
 import WalletView from './components/WalletView';
 import { INITIAL_STATE } from './constants';
 import { fetchInitialState } from './services/api';
 import { AppState, Product, StoreInfo, Order, Customer, UserProfile, ProductOption } from './types';
+import { StateGates } from './stateTransitions';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
@@ -54,14 +54,19 @@ const App: React.FC = () => {
   };
 
   const addProduct = (product: Partial<Product>) => {
+    const now = new Date().toISOString();
     const newProduct: Product = {
       id: Math.random().toString(36).substr(2, 9),
+      business_id: state.store.id,
       name: product.name || 'Untitled Product',
       price: product.price || 0,
       description: product.description || '',
       stock: product.stock === undefined ? 0 : product.stock,
       category: (product.category as any) || 'Other',
-      status: 'active',
+      status: 'ACTIVE',
+      created_by: 'MANUAL',
+      created_at: now,
+      updated_at: now,
       availabilityType: product.availabilityType || 'ready',
       deliveryDays: product.deliveryDays,
       images: product.images && product.images.length > 0
@@ -95,17 +100,25 @@ const App: React.FC = () => {
   };
 
   const handleCreateOrder = (orderData: Partial<Order>) => {
+    const now = new Date().toISOString();
     const newOrder: Order = {
       id: `O-${Math.floor(1000 + Math.random() * 9000)}`,
+      business_id: state.store.id,
+      customer_id: orderData.customer_id || `C-${Math.random().toString(36).substr(2, 6)}`,
       customerName: orderData.customerName || 'Anonymous',
       phoneNumber: orderData.phoneNumber,
       channel: orderData.channel || 'web',
       items: orderData.items || [],
       total: orderData.total || 0,
+      total_amount: orderData.total || 0,
       status: orderData.status || 'pending',
-      createdAt: orderData.createdAt || new Date().toISOString(),
+      order_status: 'NEW',
+      payment_status: 'UNPAID',
+      delivery_status: 'PENDING',
+      source: 'OFFLINE',
+      created_by: 'MANUAL',
+      created_at: now,
       isAiGenerated: orderData.isAiGenerated ?? false,
-      paymentStatus: orderData.paymentStatus || 'unpaid',
       paymentMethod: orderData.paymentMethod || 'bank_transfer',
       deliveryMethod: orderData.deliveryMethod || 'pickup',
       deliveryAddress: orderData.deliveryAddress,
@@ -120,14 +133,18 @@ const App: React.FC = () => {
     const now = new Date().toISOString();
     const newCustomer: Customer = {
       id: `C-${Math.random().toString(36).substr(2, 6)}`,
+      business_id: state.store.id,
       name: customerData.name || 'Unknown',
-      phoneNumber: customerData.phoneNumber,
+      phone: customerData.phone,
       channel: customerData.channel || 'web',
+      total_orders: 0,
+      total_spend: 0,
       ordersCount: 0,
       totalSpent: 0,
       firstInteraction: now,
       lastInteraction: now,
-      status: 'new',
+      created_at: now,
+      status: 'NEW',
       source: 'manual',
       note: customerData.note,
       aiInsight: 'Manually added customer profile.'
@@ -184,7 +201,11 @@ const App: React.FC = () => {
     );
   }
 
-  if (!state.store.isLive || state.store.onboardingStep < 5) {
+  // STATE-DRIVEN: Show onboarding if business is not ACTIVE
+  // This replaces the legacy isLive/onboardingStep check
+  const canAccessMainApp = StateGates.canAccessMainApp(state.store.status);
+
+  if (!canAccessMainApp) {
     return (
       <OnboardingFlow
         store={state.store}
@@ -196,16 +217,7 @@ const App: React.FC = () => {
     );
   }
 
-  // Handle Full-Screen Storefront Mode
-  if (activeView === 'storefront') {
-    return (
-      <StorefrontView
-        store={state.store}
-        products={state.products}
-        onExit={() => setActiveView('dashboard')}
-      />
-    );
-  }
+
 
   const renderView = () => {
     const commonProps = { userLanguage: state.user.language };
@@ -275,7 +287,7 @@ const App: React.FC = () => {
       case 'wallet':
         return <WalletView store={state.store} orders={state.orders} onUpdateStore={updateStore} {...commonProps} />;
       case 'settings':
-        return <SettingsView store={state.store} onViewStore={() => setActiveView('storefront')} {...commonProps} />;
+        return <SettingsView store={state.store} {...commonProps} />;
       case 'profile':
         return <ProfileView user={state.user} onUpdate={updateUser} {...commonProps} />;
       default:
@@ -307,8 +319,22 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* AI Assistant Panel - Always present, collapsible */}
       <div className={`fixed top-0 right-0 h-full w-[400px] bg-[#1A1A1A] z-50 transition-transform duration-500 shadow-[-20px_0_50px_rgba(0,0,0,0.3)] ${isAssistantOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <AIAssistant state={state} updateState={updateState} onClose={() => setIsAssistantOpen(false)} initialContext={aiProductContext} clearContext={() => setAiProductContext(null)} />
+        <AIAssistant
+          state={state}
+          updateState={updateState}
+          onClose={() => setIsAssistantOpen(false)}
+          initialContext={aiProductContext}
+          clearContext={() => setAiProductContext(null)}
+          currentView={activeView}
+          contextData={
+            activeView === 'product_detail' ? selectedProduct :
+              activeView === 'order_detail' ? selectedOrder :
+                activeView === 'customer_detail' ? selectedCustomer :
+                  null
+          }
+        />
       </div>
       {isWizardOpen && (
         <ProductCreationWizard onClose={() => setIsWizardOpen(false)} onManualCreate={addProduct} onAiStart={startAiFlow} />
