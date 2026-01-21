@@ -13,7 +13,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedItems, setSelectedItems] = useState<{ productId: string; quantity: number }[]>([]);
-  
+
   const [deliveryMethod, setDeliveryMethod] = useState<'courier' | 'pickup' | 'none'>(
     store.fulfillment.deliveryTypes[0] || 'pickup'
   );
@@ -31,7 +31,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
   const total = useMemo(() => {
     return selectedItems.reduce((acc, item) => {
       const p = products.find(prod => prod.id === item.productId);
-      const price = p ? (p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value/100) : p.discount.value) : p.price) : 0;
+      const price = p ? (p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value / 100) : p.discount.value) : p.price) : 0;
       return acc + (price * item.quantity);
     }, 0);
   }, [selectedItems, products]);
@@ -68,11 +68,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
       deliveryMethod: deliveryMethod === 'none' ? 'pickup' : deliveryMethod,
       deliveryAddress: deliveryMethod === 'courier' ? deliveryAddress : '',
       paymentMethod,
-      paymentStatus,
+      payment_status: paymentStatus === 'paid' ? 'PAID' : 'UNPAID',
       status: paymentStatus === 'paid' ? 'confirmed' : 'pending',
       isAiGenerated: false,
-      channel: 'web', 
-      createdAt: new Date().toISOString()
+      channel: 'web',
+      created_at: new Date().toISOString()
     };
 
     onCreate(newOrder);
@@ -101,7 +101,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 animate-fade-in font-['Manrope']">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose}></div>
-      
+
       <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-slide-up">
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
           <div>
@@ -121,8 +121,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">Customer Name</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       required
                       value={customerName}
                       onChange={e => setCustomerName(e.target.value)}
@@ -132,8 +132,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">Phone Number</label>
-                    <input 
-                      type="tel" 
+                    <input
+                      type="tel"
                       required
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(e.target.value)}
@@ -155,9 +155,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                           key={m}
                           type="button"
                           onClick={() => setDeliveryMethod(m)}
-                          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                            deliveryMethod === m ? 'bg-black text-white border-black shadow-lg' : 'bg-white text-slate-400 border-slate-200'
-                          }`}
+                          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${deliveryMethod === m ? 'bg-black text-white border-black shadow-lg' : 'bg-white text-slate-400 border-slate-200'
+                            }`}
                         >
                           {m}
                         </button>
@@ -168,7 +167,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                   {deliveryMethod === 'courier' && (
                     <div className="animate-fade-in">
                       <label className="block text-xs font-bold text-slate-700 mb-2">Delivery Address</label>
-                      <textarea 
+                      <textarea
                         required
                         value={deliveryAddress}
                         onChange={e => setDeliveryAddress(e.target.value)}
@@ -187,9 +186,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                             key={s}
                             type="button"
                             onClick={() => setPaymentStatus(s)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                              paymentStatus === s ? 'bg-white text-black shadow-sm' : 'text-slate-400'
-                            }`}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${paymentStatus === s ? 'bg-white text-black shadow-sm' : 'text-slate-400'
+                              }`}
                           >
                             {s}
                           </button>
@@ -198,7 +196,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-3">Payment Method</label>
-                      <select 
+                      <select
                         value={paymentMethod}
                         onChange={e => setPaymentMethod(e.target.value as any)}
                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-black font-black text-[10px] uppercase tracking-widest"
@@ -215,11 +213,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
 
             <div className="space-y-6">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Products</h3>
-              
+
               <div className="relative mb-4">
                 <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
@@ -231,14 +229,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                 <div className="overflow-y-auto p-4 space-y-2 no-scrollbar flex-1">
                   {filteredProducts.map(p => {
                     const isSelected = selectedItems.find(i => i.productId === p.id);
-                    const finalPrice = p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value/100) : p.discount.value) : p.price;
-                    
+                    const finalPrice = p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value / 100) : p.discount.value) : p.price;
+
                     return (
-                      <div 
+                      <div
                         key={p.id}
-                        className={`p-4 rounded-2xl border flex items-center justify-between transition-all cursor-pointer ${
-                          isSelected ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-transparent hover:bg-slate-50'
-                        }`}
+                        className={`p-4 rounded-2xl border flex items-center justify-between transition-all cursor-pointer ${isSelected ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-transparent hover:bg-slate-50'
+                          }`}
                         onClick={() => toggleItem(p.id)}
                       >
                         <div className="flex items-center gap-4">
@@ -250,7 +247,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                         </div>
                         {isSelected ? (
                           <div className="flex items-center gap-3 bg-white p-1 rounded-xl shadow-sm border border-indigo-100" onClick={e => e.stopPropagation()}>
-                            <button 
+                            <button
                               type="button"
                               onClick={() => updateQty(p.id, -1)}
                               className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-black transition-all"
@@ -258,7 +255,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                               <i className="fa-solid fa-minus text-[10px]"></i>
                             </button>
                             <span className="text-xs font-black text-slate-900 w-4 text-center">{isSelected.quantity}</span>
-                            <button 
+                            <button
                               type="button"
                               onClick={() => updateQty(p.id, 1)}
                               className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-black transition-all"
@@ -274,13 +271,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ products, store, on
                   })}
                 </div>
               </div>
-              
+
               <div className="bg-[#1A1A1A] text-white p-8 rounded-[2rem] flex justify-between items-center shadow-2xl">
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estimated Total</p>
                   <p className="text-3xl font-black text-[#EDFF8C] tracking-tighter">{total.toLocaleString()}₮</p>
                 </div>
-                <button 
+                <button
                   type="submit"
                   disabled={selectedItems.length === 0 || !customerName || !phoneNumber}
                   className="bg-white text-black px-8 py-4 rounded-2xl font-black text-sm hover:bg-[#EDFF8C] transition-all shadow-xl disabled:opacity-30 disabled:cursor-not-allowed"

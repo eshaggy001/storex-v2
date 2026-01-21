@@ -70,6 +70,8 @@ export interface Business {
   city: string;
   logo_url?: string;
   phone?: string;
+  has_physical_store: boolean;
+  physical_address?: string;
   status: BusinessAccessState; // Updated to use state machine
   referral_code_used?: string;
   created_at: string;
@@ -119,8 +121,18 @@ export interface StoreInfo extends Business {
   };
   fulfillment: {
     deliveryTypes: ('courier' | 'pickup')[];
+    deliveryFee?: number;
     paymentMethods: ('cash_on_delivery' | 'bank_transfer' | 'online' | 'qpay' | 'afterpay')[];
     afterpayProviders?: ('storepay' | 'lendpay' | 'simplepay')[];
+    bnplApplicationStatus?: {
+      status: 'not_applied' | 'pending' | 'approved' | 'rejected' | 'partial';
+      applications: {
+        provider: 'storepay' | 'lendpay' | 'simplepay';
+        status: 'pending' | 'approved' | 'rejected';
+        appliedAt: string;
+        rejectionReason?: string;
+      }[];
+    };
     bankDetails?: {
       bankName: string;
       accountNumber: string;
@@ -245,8 +257,8 @@ export interface Customer {
 // ----------------------------------------------------------------------------
 // 7. ORDER
 // ----------------------------------------------------------------------------
-export type OrderPaymentStatus = 'UNPAID' | 'PAID' | 'FAILED';
-export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+export type OrderPaymentStatus = 'UNPAID' | 'PAID' | 'FAILED' | 'REFUNDED';
+export type OrderStatus = 'NEW' | 'PAID' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
 export type OrderDeliveryStatus = 'NOT_REQUIRED' | 'PENDING' | 'IN_PROGRESS' | 'DELIVERED';
 export type OrderSource = 'FACEBOOK' | 'INSTAGRAM' | 'OFFLINE' | 'WEB';
 export type OrderCreatedBy = 'AI' | 'MANUAL';
@@ -270,17 +282,20 @@ export interface Order {
   source: OrderSource;
   created_by: OrderCreatedBy;
   created_at: string;
+  cancelledAt?: string;
+  cancellationReason?: 'quality' | 'damaged' | 'customer_changed_mind' | 'other';
 
   // Extended fields for UI
   customerName: string;
   phoneNumber?: string;
   channel: 'facebook' | 'instagram' | 'web' | 'facebook_comment';
   total: number; // alias
-  status: 'pending' | 'confirmed' | 'paid' | 'completed'; // UI alias
+  status: 'pending' | 'confirmed' | 'paid' | 'completed' | 'cancelled'; // UI alias
   isAiGenerated: boolean;
   paymentMethod: 'cash_on_delivery' | 'bank_transfer' | 'online' | 'qpay' | 'afterpay';
   deliveryMethod: 'courier' | 'pickup';
   deliveryAddress?: string;
+  paymentStatus: 'unpaid' | 'pending' | 'paid' | 'refunded';
   aiSummary?: string;
   nextBestAction?: string;
 }
@@ -419,6 +434,44 @@ export interface Conversation {
 }
 
 // ----------------------------------------------------------------------------
+// 16. ACTION GUIDANCE SYSTEM
+// ----------------------------------------------------------------------------
+export type TaskTagType = 'FIRST_TIME' | 'IMPORTANT' | 'HOW_TO' | 'AI_SUGGESTED' | 'HABIT' | 'INSIGHT';
+export type TaskState = 'pending' | 'completed' | 'condition_based';
+
+export interface ActionTask {
+  id: string;
+  title: string;
+  description: string;
+  tags: TaskTagType[];
+  state: TaskState;
+  progress?: {
+    current: number;
+    total: number;
+    unit: string;
+  };
+  impact?: string;
+  whyMatters: string;
+  howTo: string[];
+  aiSuggestion?: string;
+  ctaText: string;
+  ctaAction: string;
+  icon?: string;
+  completedAt?: string;
+}
+
+export interface ActionGuidanceState {
+  daily: ActionTask[];
+  weekly: ActionTask[];
+  monthly: ActionTask[];
+  taskHistory: string[]; // Action keys completed (e.g., 'create_order', 'verify_dan')
+  streaks: {
+    daily: number;
+    weekly: number;
+  };
+}
+
+// ----------------------------------------------------------------------------
 // APP STATE
 // ----------------------------------------------------------------------------
 export interface AppState {
@@ -435,4 +488,5 @@ export interface AppState {
   payouts?: Payout[];
   automationSettings?: AutomationSetting;
   notifications?: Notification[];
+  actionGuidance: ActionGuidanceState;
 }

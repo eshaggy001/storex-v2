@@ -122,6 +122,37 @@ export async function generateProductImprovements(product: Product) {
 }
 
 /**
+ * Optimizes a specific product field using AI.
+ */
+export async function optimizeProductField(product: Partial<Product>, field: string) {
+  if (!ai) {
+    if (field === 'name') return `Premium ${product.category || 'Product'}`;
+    if (field === 'description') return `Experience the best of ${product.name || 'this item'} with our professional quality design.`;
+    return "";
+  }
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: [
+      {
+        parts: [
+          {
+            text: `Optimize the '${field}' for this product. 
+            Product Name: ${product.name}
+            Category: ${product.category}
+            Current Description: ${product.description}
+            
+            Return only the optimized text for the '${field}' field. No JSON, just the string.`
+          }
+        ]
+      }
+    ]
+  });
+
+  return response.text.trim().replace(/^"/, '').replace(/"$/, '');
+}
+
+/**
  * Processes assistant commands using Gemini 3 Pro for complex intent extraction.
  */
 export async function processAssistantCommand(

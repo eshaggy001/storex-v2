@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { UserProfile } from '../types';
 
 type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'failed';
+type OTPField = 'email' | 'phoneNumber' | null;
 
 interface ProfileViewProps {
   user: UserProfile;
@@ -15,6 +16,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('unverified');
   const [verificationDate, setVerificationDate] = useState<string | null>(null);
 
+  // OTP States
+  const [otpTarget, setOtpTarget] = useState<{ field: OTPField; value: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [isOtpLoading, setIsOtpLoading] = useState(false);
+  const [isOtpError, setIsOtpError] = useState(false);
+
   const [formData, setFormData] = useState({
     fullName: user.fullName,
     email: user.email,
@@ -24,6 +31,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
 
   const [pendingAvatar, setPendingAvatar] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<Record<string, 'idle' | 'saving' | 'saved'>>({});
+  const [editingField, setEditingField] = useState<'email' | 'phoneNumber' | null>(null);
 
   const triggerAutoSave = (field: string) => {
     setSaveStatus(prev => ({ ...prev, [field]: 'saving' }));
@@ -39,9 +47,44 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
   };
 
   const saveField = (field: keyof typeof formData) => {
-    if (formData[field] === (user as any)[field]) return;
-    onUpdate({ [field]: formData[field] });
+    const currentValue = (user as any)[field];
+    const newValue = formData[field];
+
+    if (newValue === currentValue) return;
+
+    // Email and Phone Number require OTP verification
+    if (field === 'email' || field === 'phoneNumber') {
+      setOtpTarget({ field, value: newValue as string });
+      setOtpCode('');
+      setIsOtpError(false);
+      setEditingField(null); // Close edit mode after triggering OTP
+      return;
+    }
+
+    // Other fields (like fullName) save directly
+    onUpdate({ [field]: newValue });
     triggerAutoSave(field as string);
+  };
+
+  const confirmOtp = () => {
+    if (otpCode.length < 4) return;
+
+    setIsOtpLoading(true);
+    setIsOtpError(false);
+
+    // Simulate backend verification
+    setTimeout(() => {
+      if (otpCode === '1234' || otpCode === '123456') { // Demo codes
+        if (otpTarget) {
+          onUpdate({ [otpTarget.field as string]: otpTarget.value });
+          triggerAutoSave(otpTarget.field as string);
+          setOtpTarget(null);
+        }
+      } else {
+        setIsOtpError(true);
+      }
+      setIsOtpLoading(false);
+    }, 1500);
   };
 
   const handleToggleNotification = (field: keyof typeof formData.notifications) => {
@@ -147,33 +190,107 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] leading-none">Phone Number</label>
-                    {saveStatus.phoneNumber === 'saving' && <i className="fa-solid fa-spinner fa-spin text-indigo-500 text-[10px]"></i>}
-                    {saveStatus.phoneNumber === 'saved' && <i className="fa-solid fa-check text-emerald-500 text-[10px]"></i>}
+                    <div className="flex items-center gap-2">
+                      {saveStatus.phoneNumber === 'saving' && <i className="fa-solid fa-spinner fa-spin text-indigo-500 text-[10px]"></i>}
+                      {saveStatus.phoneNumber === 'saved' && <i className="fa-solid fa-check text-emerald-500 text-[10px]"></i>}
+                      {editingField !== 'phoneNumber' && (
+                        <button
+                          onClick={() => setEditingField('phoneNumber')}
+                          className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-black transition-colors"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    onBlur={() => saveField('phoneNumber')}
-                    placeholder="+976 9900-0000"
-                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-lg font-semibold text-[#1A1A1A] outline-none focus:bg-white focus:border-black focus:ring-4 focus:ring-slate-50 transition-all"
-                  />
+                  {editingField === 'phoneNumber' ? (
+                    <div className="flex gap-2 animate-fade-in">
+                      <input
+                        type="tel"
+                        name="phoneNumber"
+                        value={formData.phoneNumber}
+                        onChange={handleChange}
+                        autoFocus
+                        placeholder="+976 9900-0000"
+                        className="flex-1 bg-white border border-black rounded-2xl px-6 py-4 text-lg font-semibold text-[#1A1A1A] outline-none shadow-sm transition-all"
+                      />
+                      <button
+                        onClick={() => saveField('phoneNumber')}
+                        className="bg-black text-[#EDFF8C] px-6 rounded-2xl font-bold text-sm hover:bg-slate-900 transition-all active:scale-95"
+                      >
+                        Verify
+                      </button>
+                      <button
+                        onClick={() => { setEditingField(null); setFormData(p => ({ ...p, phoneNumber: user.phoneNumber || '' })); }}
+                        className="bg-slate-100 text-slate-400 px-4 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all"
+                      >
+                        <i className="fa-solid fa-xmark"></i>
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => setEditingField('phoneNumber')}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-lg font-semibold text-[#1A1A1A] cursor-pointer hover:bg-slate-100 transition-all"
+                    >
+                      {user.phoneNumber || '+976 •••• ••••'}
+                    </div>
+                  )}
                 </div>
 
-                {/* Email Address - READ ONLY */}
+                {/* Email Address */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] leading-none">Email Address</label>
-                  <div className="relative group">
-                    <div className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-slate-400 font-semibold text-lg flex items-center justify-between opacity-70 grayscale">
-                      {user.email}
-                      <i className="fa-solid fa-lock text-[12px] opacity-40"></i>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] leading-none">Email Address</label>
+                    <div className="flex items-center gap-2">
+                      {saveStatus.email === 'saving' && <i className="fa-solid fa-spinner fa-spin text-indigo-500 text-[10px]"></i>}
+                      {saveStatus.email === 'saved' && <i className="fa-solid fa-check text-emerald-500 text-[10px]"></i>}
+                      {editingField !== 'email' && (
+                        <button
+                          onClick={() => setEditingField('email')}
+                          className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-black transition-colors"
+                        >
+                          Change
+                        </button>
+                      )}
                     </div>
-                    <p className="mt-2 text-[11px] text-slate-400 font-medium flex items-center gap-2">
-                      <i className="fa-solid fa-circle-info text-[9px]"></i>
-                      Email changes require a separate verification process
-                    </p>
                   </div>
+                  {editingField === 'email' ? (
+                    <div className="flex gap-2 animate-fade-in">
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        autoFocus
+                        placeholder="name@example.com"
+                        className="flex-1 bg-white border border-black rounded-2xl px-6 py-4 text-lg font-semibold text-[#1A1A1A] outline-none shadow-sm transition-all"
+                      />
+                      <button
+                        onClick={() => saveField('email')}
+                        className="bg-black text-[#EDFF8C] px-6 rounded-2xl font-bold text-sm hover:bg-slate-900 transition-all active:scale-95"
+                      >
+                        Verify
+                      </button>
+                      <button
+                        onClick={() => { setEditingField(null); setFormData(p => ({ ...p, email: user.email })); }}
+                        className="bg-slate-100 text-slate-400 px-4 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all"
+                      >
+                        <i className="fa-solid fa-xmark"></i>
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => setEditingField('email')}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-lg font-semibold text-[#1A1A1A] cursor-pointer hover:bg-slate-100 transition-all flex items-center justify-between"
+                    >
+                      {user.email}
+                      <i className="fa-solid fa-lock text-[12px] opacity-10"></i>
+                    </div>
+                  )}
+                  <p className="mt-2 text-[11px] text-slate-400 font-medium flex items-center gap-2">
+                    <i className="fa-solid fa-circle-info text-[9px]"></i>
+                    Identity update requires OTP verification
+                  </p>
                 </div>
               </div>
             </div>
@@ -292,6 +409,65 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-[11px]">Connecting to Government Identity Node...</p>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* 3.1 REFERRAL PROGRAM (CARD) */}
+        <section className="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#EDFF8C]/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
+
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-6">
+              <div className="w-14 h-14 bg-white/5 rounded-[1.25rem] border border-white/10 flex items-center justify-center text-[#EDFF8C]">
+                <i className="fa-solid fa-gift text-xl"></i>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight leading-none">Growth & Referrals</h2>
+                <p className="text-[13px] text-slate-400 font-medium mt-2">Bypass the access queue for a business partner.</p>
+              </div>
+            </div>
+
+            <div className="px-4 py-2 bg-[#EDFF8C]/10 border border-[#EDFF8C]/20 text-[#EDFF8C] rounded-xl text-[10px] font-black uppercase tracking-[0.2em]">
+              1 Invite Available
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
+            <div className="space-y-4">
+              <p className="text-[14px] text-slate-300 font-medium leading-relaxed">
+                Invite another store owner to join Storex. Your unique referral code allows them to skip the waiting list and start selling immediately.
+              </p>
+              <div className="flex items-center gap-4 pt-2">
+                <div className="flex -space-x-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="w-9 h-9 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-[11px] text-slate-500 font-black overflow-hidden shadow-xl">
+                      <i className="fa-solid fa-user"></i>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-500 font-black uppercase tracking-widest">Join 2,400+ Trusted Merchants</p>
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 space-y-4 flex flex-col justify-center">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-6 py-4 font-mono font-bold text-xl text-[#EDFF8C] tracking-[0.2em] flex items-center justify-between shadow-inner">
+                  <span>SX-2921-G9</span>
+                  <i className="fa-solid fa-ticket text-white/5"></i>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText('SX-2921-G9');
+                    alert('Referral code copied to clipboard!');
+                  }}
+                  className="bg-[#EDFF8C] text-black px-8 py-4 rounded-2xl font-black text-[13px] uppercase tracking-widest hover:bg-white hover:scale-[1.02] transition-all active:scale-95 shadow-lg shadow-[#EDFF8C]/10"
+                >
+                  Copy
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 font-bold text-center uppercase tracking-[0.2em]">Useeable only once per business</p>
+            </div>
           </div>
         </section>
 
@@ -431,6 +607,85 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
         </div>
 
       </div>
+
+      {/* OTP VERIFICATION MODAL */}
+      {otpTarget && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 animate-fade-in font-['Manrope']">
+          <div className="absolute inset-0 bg-[#0F172A]/80 backdrop-blur-sm" onClick={() => setOtpTarget(null)}></div>
+          <div className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up flex flex-col">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-900">
+                  <i className="fa-solid fa-shield-check text-lg"></i>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight">Node Verification</h3>
+              </div>
+              <button onClick={() => setOtpTarget(null)} className="text-slate-400 hover:text-slate-900 transition-colors">
+                <i className="fa-solid fa-xmark text-xl"></i>
+              </button>
+            </div>
+
+            <div className="p-10 space-y-8">
+              <div className="text-center space-y-3">
+                <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                  Enter the verification code dispatched to your {otpTarget.field === 'email' ? 'new email' : 'mobile'}:
+                </p>
+                <p className="text-lg font-bold text-slate-900 tracking-tight">{otpTarget.value}</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-center gap-3">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => {
+                      setOtpCode(e.target.value);
+                      setIsOtpError(false);
+                    }}
+                    placeholder="······"
+                    className={`w-full bg-slate-50 border ${isOtpError ? 'border-rose-300 ring-rose-50' : 'border-slate-100 focus:border-black focus:ring-slate-50'} rounded-2xl px-6 py-5 text-center text-3xl font-black tracking-[0.5em] outline-none focus:ring-4 transition-all placeholder:text-slate-200`}
+                  />
+                </div>
+                {isOtpError && (
+                  <p className="text-center text-rose-500 text-xs font-bold animate-shake">Incorrect verification code. Please try again.</p>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <button
+                  onClick={confirmOtp}
+                  disabled={isOtpLoading || otpCode.length < 4}
+                  className="w-full py-5 bg-[#1A1A1A] text-white rounded-2xl font-bold text-[14px] uppercase tracking-widest hover:bg-black transition-all shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {isOtpLoading ? (
+                    <i className="fa-solid fa-circle-notch fa-spin"></i>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-lock-open text-[12px]"></i>
+                      Verify Update
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpCode('');
+                    setIsOtpError(false);
+                  }}
+                  className="w-full py-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-all"
+                >
+                  Resend Code
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+              <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Security Protocol v2.4a</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DAN MODAL - REUSED AS IS BUT SLIGHT POLISH */}
       {isDanModalOpen && (

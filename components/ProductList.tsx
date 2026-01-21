@@ -38,8 +38,8 @@ const ProductList: React.FC<{ products: Product[]; onAddProduct: () => void; onS
 
   useEffect(() => localStorage.setItem('productViewMode', viewMode), [viewMode]);
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -53,90 +53,89 @@ const ProductList: React.FC<{ products: Product[]; onAddProduct: () => void; onS
   };
 
   return (
-    <div className="space-y-8 animate-fade-in font-['Manrope']">
+    <div className="space-y-10 animate-fade-in font-sans">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-dark/5 pb-10">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{lang.title}</h1>
-          <p className="text-slate-500 font-medium text-sm mt-1">{lang.subtitle}</p>
+          <h1 className="text-4xl font-bold text-dark tracking-tighter">{lang.title}</h1>
+          <p className="text-slate-500 font-medium text-base mt-2">{lang.subtitle}</p>
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
           {/* View Toggle */}
-          <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
-            <button 
+          <div className="flex bg-bg p-1.5 rounded-2xl border border-dark/5 shadow-inner">
+            <button
               onClick={() => setViewMode('card')}
-              className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
-                viewMode === 'card' ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-slate-600'
-              }`}
+              className={`px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'card' ? 'bg-white text-dark shadow-sm border border-dark/5' : 'text-slate-400 hover:text-dark'
+                }`}
             >
-              <i className="fa-solid fa-grid-2"></i> {lang.grid}
+              <i className="fa-solid fa-table-cells"></i> {lang.grid}
             </button>
-            <button 
+            <button
               onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
-                viewMode === 'list' ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-slate-600'
-              }`}
+              className={`px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'list' ? 'bg-white text-dark shadow-sm border border-dark/5' : 'text-slate-400 hover:text-dark'
+                }`}
             >
-              <i className="fa-solid fa-list"></i> {lang.list}
+              <i className="fa-solid fa-list-ul"></i> {lang.list}
             </button>
           </div>
 
-          <div className="relative group flex-1 min-w-[220px] md:w-72">
-            <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors text-sm"></i>
-            <input 
-              type="text" 
-              placeholder={lang.search} 
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)} 
-              className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 shadow-sm" 
+          <div className="relative group flex-1 min-w-[240px] md:w-80">
+            <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-lime transition-colors text-sm"></i>
+            <input
+              type="text"
+              placeholder={lang.search}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-dark/5 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold outline-none focus:border-lime focus:ring-4 focus:ring-lime/10 transition-all placeholder:text-slate-300 shadow-soft"
             />
           </div>
-          <button 
-            onClick={onAddProduct} 
-            className="flex items-center gap-2 px-6 py-3 bg-[#1A1A1A] text-white rounded-2xl font-bold text-sm hover:bg-black transition-all shadow-lg uppercase tracking-wide shrink-0"
+          <button
+            onClick={onAddProduct}
+            className="btn-primary !px-8 !py-4 shadow-xl"
           >
-            <i className="fa-solid fa-plus text-[#EDFF8C]"></i> {lang.addProduct}
+            <i className="fa-solid fa-plus text-dark/70 mr-1"></i> {lang.addProduct}
           </button>
         </div>
       </div>
 
       {filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 p-20 text-center shadow-sm">
-          <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-300 text-2xl">
-            <i className="fa-solid fa-box-open"></i>
+        <div className="bg-white rounded-super border border-dark/5 p-24 text-center shadow-soft animate-fade-up">
+          <div className="w-24 h-24 bg-bg rounded-card flex items-center justify-center mx-auto mb-8 text-slate-200 text-4xl shadow-inner group overflow-hidden">
+            <i className="fa-solid fa-box-open group-hover:scale-110 transition-transform"></i>
           </div>
-          <h3 className="text-xl font-bold text-slate-900">{lang.notFound}</h3>
-          <p className="text-slate-500 mt-2 font-medium text-sm">{lang.notFoundDesc}</p>
+          <h3 className="text-2xl font-bold text-dark tracking-tight">{lang.notFound}</h3>
+          <p className="text-slate-500 mt-3 font-medium text-base max-w-sm mx-auto">{lang.notFoundDesc}</p>
         </div>
       ) : (
         <>
           {viewMode === 'card' ? (
             /* Grid View */
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {filteredProducts.map((product, i) => {
                 const status = getStockStatus(product);
                 return (
-                  <div 
-                    key={product.id} 
-                    onClick={() => onSelectProduct(product)} 
-                    className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer"
+                  <div
+                    key={product.id}
+                    onClick={() => onSelectProduct(product)}
+                    className="bg-white rounded-super border border-dark/5 overflow-hidden group transition-all hover:shadow-2xl hover:-translate-y-2 cursor-pointer animate-fade-up"
+                    style={{ animationDelay: `${i * 0.05}s` }}
                   >
-                    <div className="aspect-square overflow-hidden relative bg-slate-50">
-                      <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                      <div className="absolute top-6 left-6">
-                        <span className="px-3 py-1.5 rounded-xl bg-[#1A1A1A] text-[#EDFF8C] text-[10px] font-bold uppercase tracking-widest shadow-md">{product.category}</span>
+                    <div className="aspect-[4/5] overflow-hidden relative bg-bg">
+                      <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                      <div className="absolute top-6 left-6 flex flex-col gap-2">
+                        <span className="px-4 py-2 rounded-xl bg-dark text-lime text-[10px] font-bold uppercase tracking-widest shadow-2xl backdrop-blur-md opacity-90">{product.category}</span>
                       </div>
                       <div className="absolute bottom-6 right-6">
-                        <span className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg border ${status.color}`}>{status.label}</span>
+                        <span className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-2xl border backdrop-blur-md ${status.color}`}>{status.label}</span>
                       </div>
                     </div>
-                    <div className="p-8 space-y-3">
-                      <h3 className="text-lg font-bold text-slate-900 truncate">{product.name}</h3>
-                      <div className="flex justify-between items-end">
-                        <p className="text-2xl font-bold text-slate-900 tracking-tight">{product.price.toLocaleString()}₮</p>
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-300 flex items-center justify-center group-hover:bg-[#1A1A1A] group-hover:text-[#EDFF8C] transition-all">
-                          <i className="fa-solid fa-arrow-right-long text-sm"></i>
+                    <div className="p-8 space-y-4">
+                      <h3 className="text-lg font-bold text-dark truncate tracking-tight">{product.name}</h3>
+                      <div className="flex justify-between items-center">
+                        <p className="text-2xl font-bold text-dark tracking-tighter">{product.price.toLocaleString()}₮</p>
+                        <div className="w-12 h-12 rounded-xl bg-bg text-dark/30 flex items-center justify-center group-hover:bg-lime group-hover:text-dark transition-all shadow-sm group-hover:shadow-lime/20 group-hover:-rotate-3 translate-y-1">
+                          <i className="fa-solid fa-arrow-right text-lg"></i>
                         </div>
                       </div>
                     </div>
@@ -146,56 +145,58 @@ const ProductList: React.FC<{ products: Product[]; onAddProduct: () => void; onS
             </div>
           ) : (
             /* List View */
-            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden animate-slide-up">
+            <div className="bg-white rounded-super border border-dark/5 shadow-soft overflow-hidden animate-fade-up">
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b border-slate-100">
+                  <thead className="bg-bg/50 border-b border-dark/5">
                     <tr>
-                      <th className="py-5 px-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lang.cols.product}</th>
-                      <th className="py-5 px-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lang.cols.id}</th>
-                      <th className="py-5 px-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lang.cols.category}</th>
-                      <th className="py-5 px-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lang.cols.price}</th>
-                      <th className="py-5 px-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lang.cols.inventory}</th>
-                      <th className="py-5 px-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lang.cols.status}</th>
+                      <th className="py-6 px-10 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{lang.cols.product}</th>
+                      <th className="py-6 px-10 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">{lang.cols.category}</th>
+                      <th className="py-6 px-10 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">{lang.cols.price}</th>
+                      <th className="py-6 px-10 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">{lang.cols.inventory}</th>
+                      <th className="py-6 px-10 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">{lang.cols.status}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredProducts.map((product) => {
+                  <tbody className="divide-y divide-dark/5">
+                    {filteredProducts.map((product, i) => {
                       const status = getStockStatus(product);
                       return (
-                        <tr 
-                          key={product.id} 
+                        <tr
+                          key={product.id}
                           onClick={() => onSelectProduct(product)}
-                          className="group hover:bg-slate-50 transition-colors cursor-pointer"
+                          className="group hover:bg-bg/30 transition-all cursor-pointer animate-fade-up"
+                          style={{ animationDelay: `${i * 0.03}s` }}
                         >
-                          <td className="py-5 px-8">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
-                                <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                          <td className="py-6 px-10">
+                            <div className="flex items-center gap-5">
+                              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-bg border border-dark/5 shadow-sm group-hover:shadow-md transition-shadow">
+                                <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                               </div>
-                              <span className="font-bold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">
-                                {product.name}
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-dark text-base tracking-tight group-hover:text-dark transition-colors">
+                                  {product.name}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {product.id}</span>
+                              </div>
                             </div>
                           </td>
-                          <td className="py-5 px-8 text-xs font-semibold text-slate-500">{product.id}</td>
-                          <td className="py-5 px-8">
-                            <span className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-widest border border-slate-200">
+                          <td className="py-6 px-10 text-center">
+                            <span className="px-4 py-2 rounded-xl bg-bg text-slate-600 text-[10px] font-bold uppercase tracking-widest border border-dark/5 shadow-sm">
                               {product.category}
                             </span>
                           </td>
-                          <td className="py-5 px-8">
-                            <div className="font-bold text-slate-900 text-sm">
+                          <td className="py-6 px-10 text-right">
+                            <div className="font-bold text-dark text-base tracking-tight">
                               {product.price.toLocaleString()}₮
                             </div>
                           </td>
-                          <td className="py-5 px-8">
-                             <div className="text-xs font-semibold text-slate-700">
-                               {product.stock === 'unlimited' ? 'Unlimited' : `${product.stock} units`}
-                             </div>
+                          <td className="py-6 px-10 text-center">
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              {product.stock === 'unlimited' ? 'Unlimited' : `${product.stock} units`}
+                            </div>
                           </td>
-                          <td className="py-5 px-8">
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${status.color}`}>
+                          <td className="py-6 px-10 text-right">
+                            <span className={`inline-flex items-center px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border shadow-sm ${status.color}`}>
                               {status.label}
                             </span>
                           </td>

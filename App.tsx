@@ -15,10 +15,17 @@ import ProfileView from './components/ProfileView';
 import OnboardingFlow from './components/OnboardingFlow';
 import ProductCreationWizard from './components/ProductCreationWizard';
 import WalletView from './components/WalletView';
+import PaymentSetupModal from './components/PaymentSetupModal';
+import DeliverySetupModal from './components/DeliverySetupModal';
+import SocialChannelModal from './components/SocialChannelModal';
 import { INITIAL_STATE } from './constants';
 import { fetchInitialState } from './services/api';
 import { AppState, Product, StoreInfo, Order, Customer, UserProfile, ProductOption } from './types';
-import { StateGates } from './stateTransitions';
+import { StateGates, updateReadinessFlags } from './stateTransitions';
+import { ActionTask } from './types';
+import GuidanceDrawer from './components/dashboard/GuidanceSystem/GuidanceDrawer';
+import { deriveActionGuidance } from './services/guidanceEngine';
+import StorefrontView from './components/StorefrontView';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
@@ -29,7 +36,12 @@ const App: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
   const [aiProductContext, setAiProductContext] = useState<{ image: string, suggestions: { name: string, category: string, options?: ProductOption[] } } | null>(null);
+  const [selectedGuidanceTask, setSelectedGuidanceTask] = useState<ActionTask | null>(null);
+  const [isGuidanceDrawerOpen, setIsGuidanceDrawerOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -40,6 +52,51 @@ const App: React.FC = () => {
     };
     loadData();
   }, []);
+
+  // Synchronize readiness flags whenever critical state changes
+  useEffect(() => {
+    if (isLoading) return;
+
+    const newReadiness = updateReadinessFlags({
+      ...state.store,
+      products: state.products
+    });
+
+    const hasChanged = JSON.stringify(newReadiness) !== JSON.stringify(state.store.readiness);
+
+    if (hasChanged) {
+      setState(prev => ({
+        ...prev,
+        store: {
+          ...prev.store,
+          readiness: newReadiness
+        }
+      }));
+    }
+  }, [state.products, state.store.fulfillment, state.store.status, state.store.tokenUsage, isLoading]);
+
+  // Synchronize Action Guidance System
+  useEffect(() => {
+    if (isLoading) return;
+
+    const newGuidance = deriveActionGuidance(state);
+
+    if (JSON.stringify(newGuidance) !== JSON.stringify(state.actionGuidance)) {
+      setState(prev => ({
+        ...prev,
+        actionGuidance: newGuidance
+      }));
+    }
+  }, [
+    state.products,
+    state.orders,
+    state.conversations,
+    state.store.readiness,
+    state.store.fulfillment,
+    state.actionGuidance.streaks,
+    state.actionGuidance.taskHistory,
+    isLoading
+  ]);
 
   const updateState = (updates: Partial<AppState>) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -53,7 +110,7 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, user: { ...prev.user, ...updates } }));
   };
 
-  const addProduct = (product: Partial<Product>) => {
+  const addProduct = (product: Partial<Product>, stayOnCurrentView: boolean = false) => {
     const now = new Date().toISOString();
     const newProduct: Product = {
       id: Math.random().toString(36).substr(2, 9),
@@ -76,7 +133,9 @@ const App: React.FC = () => {
       options: product.options
     };
     setState(prev => ({ ...prev, products: [newProduct, ...prev.products] }));
-    setActiveView('products');
+    if (!stayOnCurrentView) {
+      setActiveView('products');
+    }
   };
 
   const updateProduct = (id: string, updates: Partial<Product>) => {
@@ -122,8 +181,10 @@ const App: React.FC = () => {
       paymentMethod: orderData.paymentMethod || 'bank_transfer',
       deliveryMethod: orderData.deliveryMethod || 'pickup',
       deliveryAddress: orderData.deliveryAddress,
+      paymentStatus: 'unpaid',
       aiSummary: orderData.aiSummary || 'This order was created manually by the merchant.',
     };
+
 
     setState(prev => ({ ...prev, orders: [newOrder, ...prev.orders] }));
     return newOrder;
@@ -159,7 +220,12 @@ const App: React.FC = () => {
   };
 
   const completeOnboarding = () => {
-    updateStore({ onboardingStep: 5, isLive: true });
+    // STATE-DRIVEN: Ensure business status is ACTIVE when onboarding completes
+    updateStore({
+      onboardingStep: 5,
+      isLive: true,
+      status: state.store.status === 'ACCESS_REQUESTED' ? 'ACCESS_REQUESTED' : 'ACTIVE'
+    });
     setActiveView('dashboard');
   };
 
@@ -176,6 +242,38 @@ const App: React.FC = () => {
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
     setActiveView('customer_detail');
+  };
+
+  const handleTaskClick = (task: ActionTask) => {
+    setSelectedGuidanceTask(task);
+    setIsGuidanceDrawerOpen(true);
+  };
+
+  const handleGuidanceAction = (task: ActionTask) => {
+    const action = task.ctaAction;
+
+    if (action.startsWith('navigate:')) {
+      const view = action.split(':')[1];
+      setActiveView(view);
+    } else if (action === 'action:add_product') {
+      setIsWizardOpen(true);
+    } else if (action === 'view:analytics') {
+      // In a real app, scroll to analytics or open modal
+      alert('Opening Insights...');
+    } else if (action === 'view:progress') {
+      alert('Viewing Streak Progress...');
+    }
+
+    // Mark task as "visited/interacted" if needed
+    if (task.tags.includes('INSIGHT') && !state.actionGuidance.taskHistory.includes(`view_${task.id}`)) {
+      setState(prev => ({
+        ...prev,
+        actionGuidance: {
+          ...prev.actionGuidance,
+          taskHistory: [...prev.actionGuidance.taskHistory, `view_${task.id}`]
+        }
+      }));
+    }
   };
 
   const navigateToProducts = () => {
@@ -195,8 +293,13 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F8F9FA]">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-black"></div>
+      <div className="flex items-center justify-center min-h-screen bg-bg">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-dark/10"></div>
+          <div className="absolute inset-0 animate-pulse flex items-center justify-center">
+            <div className="w-2 h-2 bg-lime rounded-full shadow-[0_0_10px_#EDFF8C]"></div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -212,7 +315,6 @@ const App: React.FC = () => {
         updateStore={updateStore}
         addProduct={(p) => addProduct(p)}
         onComplete={completeOnboarding}
-        language={state.user.language}
       />
     );
   }
@@ -233,6 +335,13 @@ const App: React.FC = () => {
             customers={state.customers}
             onNavigate={setActiveView}
             onSelectOrder={handleSelectOrder}
+            onAddProduct={() => setIsWizardOpen(true)}
+            onConnectPayment={() => setIsPaymentModalOpen(true)}
+            onSetupDelivery={() => setIsDeliveryModalOpen(true)}
+            onConnectSocial={() => setIsSocialModalOpen(true)}
+            actionGuidance={state.actionGuidance}
+            onGuidanceAction={handleGuidanceAction}
+            onTaskClick={handleTaskClick}
             {...commonProps}
           />
         );
@@ -287,16 +396,18 @@ const App: React.FC = () => {
       case 'wallet':
         return <WalletView store={state.store} orders={state.orders} onUpdateStore={updateStore} {...commonProps} />;
       case 'settings':
-        return <SettingsView store={state.store} {...commonProps} />;
+        return <SettingsView store={state.store} onUpdate={updateStore} {...commonProps} />;
       case 'profile':
         return <ProfileView user={state.user} onUpdate={updateUser} {...commonProps} />;
+      case 'storefront':
+        return <StorefrontView store={state.store} products={state.products} onExit={() => setActiveView('dashboard')} />;
       default:
         return <DashboardOverview store={state.store} orders={state.orders} conversations={state.conversations} products={state.products} customers={state.customers} onNavigate={setActiveView} onSelectOrder={handleSelectOrder} {...commonProps} />;
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FA] overflow-hidden relative">
+    <div className="flex min-h-screen bg-bg overflow-hidden relative font-sans">
       <Sidebar
         activeView={activeView}
         setActiveView={setActiveView}
@@ -304,7 +415,7 @@ const App: React.FC = () => {
         toggleAssistant={() => setIsAssistantOpen(!isAssistantOpen)}
         language={state.user.language}
       />
-      <div className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-500 ${isAssistantOpen ? 'mr-[400px]' : 'mr-0'}`}>
+      <div className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-700 ease-in-out ${isAssistantOpen ? 'mr-[400px]' : 'mr-0'} ${isGuidanceDrawerOpen ? 'blur-[6px] pointer-events-none' : ''}`}>
         <TopBar
           store={state.store}
           user={state.user}
@@ -314,13 +425,13 @@ const App: React.FC = () => {
           onToggleLanguage={(lang) => updateUser({ language: lang })}
         />
         <div className="flex-1 overflow-y-auto px-10 pb-10 no-scrollbar">
-          <div className="max-w-[1600px] mx-auto pt-6">
+          <div className="max-w-[1600px] mx-auto pt-8">
             {renderView()}
           </div>
         </div>
       </div>
       {/* AI Assistant Panel - Always present, collapsible */}
-      <div className={`fixed top-0 right-0 h-full w-[400px] bg-[#1A1A1A] z-50 transition-transform duration-500 shadow-[-20px_0_50px_rgba(0,0,0,0.3)] ${isAssistantOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full w-[400px] bg-dark z-50 transition-transform duration-700 ease-in-out shadow-[-20px_0_50px_rgba(0,0,0,0.3)] border-l border-white/5 ${isAssistantOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <AIAssistant
           state={state}
           updateState={updateState}
@@ -337,13 +448,43 @@ const App: React.FC = () => {
         />
       </div>
       {isWizardOpen && (
-        <ProductCreationWizard onClose={() => setIsWizardOpen(false)} onManualCreate={addProduct} onAiStart={startAiFlow} />
+        <ProductCreationWizard
+          onClose={() => setIsWizardOpen(false)}
+          onManualCreate={(p) => addProduct(p, activeView === 'dashboard')}
+          onAiStart={startAiFlow}
+        />
       )}
+      <PaymentSetupModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        store={state.store}
+        onUpdateStore={updateStore}
+      />
+      <DeliverySetupModal
+        isOpen={isDeliveryModalOpen}
+        onClose={() => setIsDeliveryModalOpen(false)}
+        store={state.store}
+        onUpdateStore={updateStore}
+      />
+      <SocialChannelModal
+        isOpen={isSocialModalOpen}
+        onClose={() => setIsSocialModalOpen(false)}
+        store={state.store}
+        onUpdateStore={updateStore}
+      />
       {!isAssistantOpen && (
-        <button onClick={() => setIsAssistantOpen(true)} className="fixed bottom-10 right-10 w-20 h-20 bg-[#EDFF8C] text-black rounded-[2rem] shadow-2xl flex items-center justify-center hover:scale-110 transition-all active:scale-95 group z-40 border-4 border-white animate-fade-in">
+        <button onClick={() => setIsAssistantOpen(true)} className="fixed bottom-10 right-10 w-20 h-20 bg-lime text-dark rounded-super shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group z-40 border-4 border-white animate-fade-in pulse-subtle">
           <i className="fa-solid fa-wand-magic-sparkles text-2xl group-hover:rotate-12 transition-transform"></i>
         </button>
       )}
+
+      {/* GLOBAL GUIDANCE DRAWER */}
+      <GuidanceDrawer
+        task={selectedGuidanceTask}
+        isOpen={isGuidanceDrawerOpen}
+        onClose={() => setIsGuidanceDrawerOpen(false)}
+        onAction={handleGuidanceAction}
+      />
     </div>
   );
 };

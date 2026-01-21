@@ -43,15 +43,15 @@ const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({ onClose, 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 font-['Manrope']">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-xl" onClick={onClose}></div>
-      
+
       <div className="relative w-full max-w-2xl bg-white rounded-super shadow-2xl overflow-hidden animate-fade-in">
         {view === 'choice' && (
           <div className="p-12 text-center">
             <h2 className="text-4xl font-black text-[#1A1A1A] tracking-tighter mb-4">Add New Product</h2>
             <p className="text-slate-500 font-medium mb-12">Choose how you'd like to list your item today.</p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <button 
+              <button
                 onClick={() => fileInputRef.current?.click()}
                 className="group p-8 bg-[#EDFF8C]/10 border-2 border-[#EDFF8C] rounded-[2rem] text-left hover:bg-[#EDFF8C] transition-all duration-500"
               >
@@ -62,7 +62,7 @@ const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({ onClose, 
                 <p className="text-black/60 text-sm font-bold">Upload a photo and let AI recognize your product instantly.</p>
               </button>
 
-              <button 
+              <button
                 onClick={() => setView('manual')}
                 className="group p-8 bg-slate-50 border-2 border-transparent rounded-[2rem] text-left hover:border-slate-200 hover:bg-white transition-all duration-500"
               >
@@ -73,7 +73,7 @@ const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({ onClose, 
                 <p className="text-slate-500 text-sm font-bold">I'll enter the details myself. No camera needed.</p>
               </button>
             </div>
-            
+
             <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
           </div>
         )}
@@ -91,36 +91,36 @@ const ProductCreationWizard: React.FC<ProductCreationWizardProps> = ({ onClose, 
             <form onSubmit={submitManual} className="space-y-6">
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Product Name</label>
-                <input 
+                <input
                   autoFocus
                   required
-                  type="text" 
+                  type="text"
                   value={manualData.name}
-                  onChange={e => setManualData({...manualData, name: e.target.value})}
-                  placeholder="e.g. Vintage Denim Jacket" 
+                  onChange={e => setManualData({ ...manualData, name: e.target.value })}
+                  placeholder="e.g. Vintage Denim Jacket"
                   className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 font-bold text-lg outline-none focus:border-black"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Price ($)</label>
-                  <input 
+                  <input
                     required
-                    type="number" 
+                    type="number"
                     value={manualData.price}
-                    onChange={e => setManualData({...manualData, price: e.target.value})}
-                    placeholder="0.00" 
+                    onChange={e => setManualData({ ...manualData, price: e.target.value })}
+                    placeholder="0.00"
                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 font-bold text-lg outline-none focus:border-black"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">In Stock</label>
-                  <input 
+                  <input
                     required
-                    type="number" 
+                    type="number"
                     value={manualData.stock}
-                    onChange={e => setManualData({...manualData, stock: e.target.value})}
-                    placeholder="10" 
+                    onChange={e => setManualData({ ...manualData, stock: e.target.value })}
+                    placeholder="10"
                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 font-bold text-lg outline-none focus:border-black"
                   />
                 </div>

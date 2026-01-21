@@ -72,9 +72,11 @@ const mapOrder = (data: any, items: any[]): Order => ({
     paymentMethod: data.payment_method,
     deliveryMethod: data.delivery_method,
     deliveryAddress: data.delivery_address,
+    paymentStatus: data.payment_status?.toLowerCase() || 'unpaid',
     aiSummary: data.ai_summary,
     nextBestAction: data.next_best_action,
 });
+
 
 // Helper to map DB Conversation to App Conversation
 const mapConversation = (data: any, messages: any[]): Conversation => ({
@@ -120,6 +122,8 @@ export const fetchInitialState = async (): Promise<AppState> => {
             city: storeData.city,
             phone: storeData.phone,
             logo_url: storeData.logo,
+            has_physical_store: storeData.has_physical_store,
+            physical_address: storeData.physical_address,
             status: storeData.status,
             created_at: storeData.created_at,
             onboardingStep: 0, // Force onboarding for demo
@@ -188,7 +192,9 @@ export const fetchInitialState = async (): Promise<AppState> => {
             customers,
             orders,
             conversations,
+            actionGuidance: INITIAL_STATE.actionGuidance,
         };
+
     } catch (error) {
         console.error('Error fetching data from Supabase:', error);
         console.log('Falling back to local INITIAL_STATE');

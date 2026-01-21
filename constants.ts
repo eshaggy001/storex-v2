@@ -14,6 +14,8 @@ export const INITIAL_STATE: AppState = {
     city: "",
     phone: "",
     logo_url: "",
+    has_physical_store: false,
+    physical_address: "",
     status: 'NO_BUSINESS', // Initial state: no business created yet
     created_at: NOW,
     onboardingStep: 0, // Legacy field, will be phased out
@@ -28,6 +30,7 @@ export const INITIAL_STATE: AppState = {
     },
     fulfillment: {
       deliveryTypes: [], // Empty initially - non-blocking
+      deliveryFee: 0,
       paymentMethods: [], // Empty initially - non-blocking
       afterpayProviders: [],
       bankDetails: {
@@ -75,5 +78,15 @@ export const INITIAL_STATE: AppState = {
   products: [], // Empty initially - user will add products after business creation
   orders: [], // Empty initially
   customers: [], // Empty initially
-  conversations: [] // Empty initially
+  conversations: [], // Empty initially
+  actionGuidance: {
+    daily: [],
+    weekly: [],
+    monthly: [],
+    taskHistory: [],
+    streaks: {
+      daily: 0,
+      weekly: 0
+    }
+  }
 };

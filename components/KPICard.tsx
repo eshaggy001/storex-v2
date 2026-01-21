@@ -14,23 +14,21 @@ interface KPICardProps {
   dark?: boolean;
 }
 
-const KPICard: React.FC<KPICardProps> = ({ 
-  label, 
-  value, 
-  trend, 
-  trendUp, 
-  badgeText, 
-  badgeColor, 
-  icon, 
-  colorClass, 
-  iconBgClass, 
-  iconColorClass, 
-  dark 
+const KPICard: React.FC<KPICardProps> = ({
+  label,
+  value,
+  trend,
+  trendUp,
+  badgeText,
+  badgeColor,
+  icon,
+  colorClass,
+  iconBgClass,
+  iconColorClass,
+  dark
 }) => {
-  // Determine final classes with backward compatibility
   const finalIconBg = iconBgClass || colorClass || 'bg-slate-50';
-  
-  // Try to determine text color if not explicitly provided
+
   let finalIconColor = iconColorClass;
   if (!finalIconColor) {
     if (colorClass === 'bg-white') finalIconColor = 'text-slate-900';
@@ -38,31 +36,39 @@ const KPICard: React.FC<KPICardProps> = ({
     else finalIconColor = 'text-white';
   }
 
-  // Determine badge content
   const showBadge = !!badgeText || !!trend;
   const finalBadgeText = badgeText || trend;
-  const finalBadgeColor = badgeColor || (trendUp ? 'bg-[#EDFF8C] text-black' : 'bg-rose-100 text-rose-600 shadow-sm');
+  const finalBadgeColor = badgeColor || (trendUp ? 'bg-[#EDFF8C]/30 text-[#8ba200]' : 'bg-rose-50 text-rose-600');
 
   return (
-    <div className={`${dark ? 'bg-[#1A1A1A] text-white' : 'bg-white text-[#1A1A1A]'} p-8 rounded-[2.5rem] border ${dark ? 'border-white/5' : 'border-slate-100'} shadow-sm hover:shadow-xl transition-all duration-500 group font-['Manrope']`}>
-      <div className="flex justify-between items-start mb-6">
-        <div className={`w-14 h-14 rounded-[1.25rem] ${finalIconBg} flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm`}>
+    <div className={`${dark ? 'bg-dark text-white' : 'bg-white text-dark'} p-8 rounded-super border ${dark ? 'border-white/5 shadow-2xl' : 'border-dark/5 shadow-soft'} hover:shadow-xl transition-all duration-500 group relative overflow-hidden`}>
+      {/* Background subtle decoration */}
+      <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-5 blur-2xl ${dark ? 'bg-white' : 'bg-lime'}`}></div>
+
+      <div className="flex justify-between items-center mb-8 relative z-10">
+        <div className={`w-14 h-14 rounded-2xl ${finalIconBg} flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 shadow-sm`}>
           <i className={`fa-solid ${icon} text-xl ${finalIconColor}`}></i>
         </div>
         {showBadge && (
-          <div className="text-right">
-            <span className={`text-[12px] font-medium px-3 py-1.5 rounded-full ${finalBadgeColor}`}>
-              {trendUp !== undefined && (
-                <i className={`fa-solid ${trendUp ? 'fa-arrow-up' : 'fa-arrow-down'} mr-1`}></i>
-              )}
-              {finalBadgeText}
-            </span>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${finalBadgeColor} text-[10px] font-bold uppercase tracking-widest transition-all duration-300 group-hover:px-4 shadow-sm border border-black/5`}>
+            {trendUp !== undefined && (
+              <i className={`fa-solid ${trendUp ? 'fa-arrow-up' : 'fa-arrow-down'} scale-90`}></i>
+            )}
+            {finalBadgeText}
           </div>
         )}
       </div>
-      <div>
-        <p className={`${dark ? 'text-slate-400' : 'text-slate-500'} text-[12px] font-medium tracking-wider uppercase leading-none`}>{label}</p>
-        <h3 className="text-2xl font-bold mt-2 tracking-tight leading-none">{value}</h3>
+
+      <div className="relative z-10">
+        <p className={`${dark ? 'text-slate-500' : 'text-slate-400'} text-[10px] font-bold tracking-[0.15em] uppercase mb-2`}>{label}</p>
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-3xl font-bold tracking-tighter transition-all duration-500 group-hover:translate-x-1">{value}</h3>
+          {trend && !badgeText && (
+            <span className={`text-[11px] font-bold ${trendUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+              {trendUp ? '+' : ''}{trend}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

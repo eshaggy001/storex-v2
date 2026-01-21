@@ -1,5 +1,6 @@
 import React from 'react';
 import { Order, Product } from '../types';
+import CancelOrderModal from './CancelOrderModal';
 
 interface OrderDetailProps {
   order: Order;
@@ -9,17 +10,40 @@ interface OrderDetailProps {
 }
 
 const OrderDetail: React.FC<OrderDetailProps> = ({ order, products, onBack, onUpdate }) => {
+  const [isCancelModalOpen, setIsCancelModalOpen] = React.useState(false);
   const getProduct = (id: string) => products.find(p => p.id === id);
 
   const setStatus = (status: Order['status']) => {
     let updates: Partial<Order> = { status };
-    if (status === 'paid') updates.paymentStatus = 'paid';
+    if (status === 'paid') {
+      updates.payment_status = 'PAID';
+      updates.paymentStatus = 'paid';
+    }
+    if (status === 'cancelled') {
+      updates.order_status = 'CANCELLED';
+      if (order.paymentStatus === 'paid') {
+        updates.payment_status = 'REFUNDED';
+        updates.paymentStatus = 'refunded';
+      }
+    }
     onUpdate(updates);
+  };
+
+  const handleCancelConfirm = (reason: 'quality' | 'damaged' | 'customer_changed_mind' | 'other') => {
+    onUpdate({
+      status: 'cancelled',
+      order_status: 'CANCELLED',
+      cancellationReason: reason,
+      cancelledAt: new Date().toISOString(),
+      payment_status: order.paymentStatus === 'paid' ? 'REFUNDED' : order.payment_status,
+      paymentStatus: order.paymentStatus === 'paid' ? 'refunded' : order.paymentStatus
+    });
+    setIsCancelModalOpen(false);
   };
 
   const getSourceInfo = (channel: Order['channel']) => {
     switch (channel) {
-      case 'facebook': 
+      case 'facebook':
       case 'facebook_comment':
         return { icon: 'fa-facebook', color: 'text-blue-600', label: 'Facebook' };
       case 'instagram': return { icon: 'fa-instagram', color: 'text-pink-600', label: 'Instagram' };
@@ -65,48 +89,61 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ order, products, onBack, onUp
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2 space-y-10">
-          
+
           {/* Horizontal Progress Tracker */}
           <section className="bg-white rounded-super p-10 border border-slate-100 shadow-sm relative overflow-hidden">
-             {/* Progress Line Background */}
-             <div className="absolute top-[3.75rem] left-[12.5%] right-[12.5%] h-0.5 -z-0">
-                <div className="absolute inset-0 bg-slate-100 rounded-full"></div>
-                <div 
-                  className="absolute left-0 top-0 h-full bg-indigo-600 rounded-full transition-all duration-700 ease-out" 
-                  style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
-                ></div>
-             </div>
-             
-             {/* Steps Grid */}
-             <div className="grid grid-cols-4 relative z-10">
-                {steps.map((step, index) => {
-                   const isCompleted = index <= currentStepIndex;
-                   const isCurrent = index === currentStepIndex;
-                   
-                   return (
-                      <div key={step} className="flex flex-col items-center gap-4">
-                         <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 transition-all duration-500 shadow-sm z-10 ${
-                            isCurrent 
-                              ? 'bg-indigo-600 border-indigo-100 text-white scale-110' 
-                              : isCompleted 
-                                 ? 'bg-indigo-100 border-white text-indigo-600' 
-                                 : 'bg-white border-slate-100 text-slate-300'
-                         }`}>
-                            {index < currentStepIndex ? (
-                               <i className="fa-solid fa-check text-xs"></i>
-                            ) : (
-                               <span className="text-xs font-bold">{index + 1}</span>
-                            )}
-                         </div>
-                         <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${
-                            isCurrent ? 'text-indigo-600' : isCompleted ? 'text-slate-900' : 'text-slate-300'
-                         }`}>
-                            {step}
-                         </span>
-                      </div>
-                   );
-                })}
-             </div>
+            {/* Progress Line Background */}
+            <div className="absolute top-[3.75rem] left-[12.5%] right-[12.5%] h-0.5 -z-0">
+              <div className="absolute inset-0 bg-slate-100 rounded-full"></div>
+              <div
+                className="absolute left-0 top-0 h-full bg-indigo-600 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+              ></div>
+            </div>
+
+            {/* Steps Grid */}
+            <div className="grid grid-cols-4 relative z-10">
+              {steps.map((step, index) => {
+                const isCompleted = index <= currentStepIndex;
+                const isCurrent = index === currentStepIndex;
+                const isCancelled = order.status === 'cancelled';
+
+                return (
+                  <div key={step} className={`flex flex-col items-center gap-4 ${isCancelled ? 'opacity-40 grayscale' : ''}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 transition-all duration-500 shadow-sm z-10 ${isCurrent
+                      ? 'bg-indigo-600 border-indigo-100 text-white scale-110'
+                      : isCompleted
+                        ? 'bg-indigo-100 border-white text-indigo-600'
+                        : 'bg-white border-slate-100 text-slate-300'
+                      }`}>
+                      {index < currentStepIndex ? (
+                        <i className="fa-solid fa-check text-xs"></i>
+                      ) : (
+                        <span className="text-xs font-bold">{index + 1}</span>
+                      )}
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${isCurrent ? 'text-indigo-600' : isCompleted ? 'text-slate-900' : 'text-slate-300'
+                      }`}>
+                      {step}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {order.status === 'cancelled' && (
+              <div className="absolute inset-0 z-20 bg-rose-50/10 backdrop-blur-[2px] flex items-center justify-center">
+                <div className="bg-white border-2 border-rose-100 px-8 py-4 rounded-2xl shadow-xl flex items-center gap-4 animate-fade-up">
+                  <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center text-xl">
+                    <i className="fa-solid fa-ban"></i>
+                  </div>
+                  <div>
+                    <p className="text-rose-600 font-bold uppercase tracking-widest text-xs">Order Cancelled</p>
+                    <p className="text-slate-500 font-medium text-sm">Reason: {order.cancellationReason?.replace(/_/g, ' ') || 'Not specified'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="bg-white rounded-super p-10 border border-slate-100 shadow-sm">
@@ -138,15 +175,15 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ order, products, onBack, onUp
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Qty: {item.quantity}</p>
-                      <p className="text-lg font-semibold text-slate-900 tracking-tight mt-0.5">{( (product?.price || 0) * item.quantity).toLocaleString()}₮</p>
+                      <p className="text-lg font-semibold text-slate-900 tracking-tight mt-0.5">{((product?.price || 0) * item.quantity).toLocaleString()}₮</p>
                     </div>
                   </div>
                 );
               })}
             </div>
             <div className="mt-12 pt-10 border-t border-slate-50 flex justify-between items-end">
-               <p className="text-slate-500 text-[14px] font-normal">{order.items.length} items total.</p>
-               <div className="text-right">
+              <p className="text-slate-500 text-[14px] font-normal">{order.items.length} items total.</p>
+              <div className="text-right">
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em] mb-1">Order Total</p>
                 <p className="text-3xl font-bold text-slate-900 tracking-tight leading-none">{order.total.toLocaleString()}₮</p>
               </div>
@@ -157,79 +194,94 @@ const OrderDetail: React.FC<OrderDetailProps> = ({ order, products, onBack, onUp
         <div className="space-y-8">
           <section className="bg-white rounded-super p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-6">
-               <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em]">Actions</h3>
-               <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-lg">{order.status}</span>
+              <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em]">Actions</h3>
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-lg">{order.status}</span>
             </div>
             <div className="space-y-3">
               {order.status === 'pending' && <button onClick={() => setStatus('confirmed')} className="w-full bg-[#1A1A1A] text-white py-3.5 rounded-2xl font-medium text-[14px] hover:bg-black transition-all shadow-xl">Confirm Order</button>}
               {order.status === 'confirmed' && <button onClick={() => setStatus('paid')} className="w-full bg-[#1A1A1A] text-white py-3.5 rounded-2xl font-medium text-[14px] hover:bg-black transition-all shadow-xl">Mark as Paid</button>}
               {order.status === 'paid' && <button onClick={() => setStatus('completed')} className="w-full bg-[#1A1A1A] text-white py-3.5 rounded-2xl font-medium text-[14px] hover:bg-black transition-all shadow-xl">Mark as Completed</button>}
               {order.status === 'completed' && <div className="w-full bg-emerald-50 text-emerald-700 py-3.5 rounded-2xl font-medium text-[14px] text-center border border-emerald-100">Order Completed</div>}
+
+              {order.status !== 'completed' && order.status !== 'cancelled' && (
+                <button
+                  onClick={() => setIsCancelModalOpen(true)}
+                  className="w-full bg-transparent border border-rose-100 text-rose-600 py-3.5 rounded-2xl font-medium text-[14px] hover:bg-rose-50 transition-all"
+                >
+                  Cancel Order
+                </button>
+              )}
             </div>
           </section>
+
+          <CancelOrderModal
+            isOpen={isCancelModalOpen}
+            onClose={() => setIsCancelModalOpen(false)}
+            onConfirm={handleCancelConfirm}
+          />
 
           {/* Payment Information Section */}
           <section className="bg-white rounded-super p-8 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em]">Payment Information</h3>
-                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600' : order.paymentStatus === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500'}`}>
-                    {order.paymentStatus}
-                </span>
+              <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em]">Payment Information</h3>
+              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${order.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600' : order.paymentStatus === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500'}`}>
+                {order.paymentStatus}
+              </span>
             </div>
-            
+
             <div className="space-y-6">
-                <div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Method Used</p>
-                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${paymentDisplay.color}`}>
-                            <i className={`fa-solid ${paymentDisplay.icon}`}></i>
-                        </div>
-                        <div>
-                           <p className="text-sm font-bold text-slate-900 capitalize leading-none">{paymentDisplay.label}</p>
-                           {order.paymentMethod === 'afterpay' && <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">BNPL Service</p>}
-                        </div>
-                    </div>
+              <div>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Method Used</p>
+                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${paymentDisplay.color}`}>
+                    <i className={`fa-solid ${paymentDisplay.icon}`}></i>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900 capitalize leading-none">{paymentDisplay.label}</p>
+                    {order.paymentMethod === 'afterpay' && <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">BNPL Service</p>}
+                  </div>
                 </div>
-                
-                <div className="pt-4 border-t border-slate-50">
-                     <div className="flex justify-between items-end">
-                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Amount</span>
-                         <span className="text-lg font-bold text-slate-900">{order.total.toLocaleString()}₮</span>
-                     </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-50">
+                <div className="flex justify-between items-end">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Amount</span>
+                  <span className="text-lg font-bold text-slate-900">{order.total.toLocaleString()}₮</span>
                 </div>
+              </div>
             </div>
           </section>
 
           {/* Delivery Information Section */}
           <section className="bg-white rounded-super p-8 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em]">Delivery Information</h3>
+              <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.2em]">Delivery Information</h3>
             </div>
-            
-            <div className="space-y-6">
-                <div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Method</p>
-                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${order.deliveryMethod === 'courier' ? 'bg-[#1A1A1A] text-white' : 'bg-white text-slate-900'}`}>
-                            <i className={`fa-solid ${order.deliveryMethod === 'courier' ? 'fa-truck' : 'fa-store'}`}></i>
-                        </div>
-                        <div>
-                           <p className="text-sm font-bold text-slate-900 capitalize leading-none">{order.deliveryMethod}</p>
-                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                             {order.deliveryMethod === 'courier' ? 'Direct to Customer' : 'Customer Pickup'}
-                           </p>
-                        </div>
-                    </div>
-                </div>
 
-                {order.deliveryMethod === 'courier' && order.deliveryAddress && (
-                    <div className="pt-4 border-t border-slate-50">
-                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Address</p>
-                         <p className="text-sm font-bold text-slate-900 leading-relaxed">
-                            {order.deliveryAddress}
-                         </p>
-                    </div>
-                )}
+            <div className="space-y-6">
+              <div>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Method</p>
+                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${order.deliveryMethod === 'courier' ? 'bg-[#1A1A1A] text-white' : 'bg-white text-slate-900'}`}>
+                    <i className={`fa-solid ${order.deliveryMethod === 'courier' ? 'fa-truck' : 'fa-store'}`}></i>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900 capitalize leading-none">{order.deliveryMethod}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                      {order.deliveryMethod === 'courier' ? 'Direct to Customer' : 'Customer Pickup'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {order.deliveryMethod === 'courier' && order.deliveryAddress && (
+                <div className="pt-4 border-t border-slate-50">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Address</p>
+                  <p className="text-sm font-bold text-slate-900 leading-relaxed">
+                    {order.deliveryAddress}
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 

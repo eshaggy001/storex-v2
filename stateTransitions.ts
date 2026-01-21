@@ -133,30 +133,28 @@ export function transitionBusinessState(
  * They NEVER block app exploration, only specific actions
  */
 export function updateReadinessFlags(
-    business: {
-        status: BusinessAccessState;
-        products?: any[];
-        paymentMethods?: string[];
-        deliveryTypes?: string[];
-        aiTokens?: number;
-        identityVerified?: boolean;
-    }
+    business: any
 ): BusinessReadiness {
+    const fulfillment = business.fulfillment || {};
+    const paymentMethods = fulfillment.paymentMethods || business.paymentMethods || [];
+    const deliveryTypes = fulfillment.deliveryTypes || business.deliveryTypes || [];
+    const products = business.products || [];
+
     return {
         // Payment enabled if at least one payment method configured
-        payment_enabled: (business.paymentMethods?.length ?? 0) > 0,
+        payment_enabled: paymentMethods.length > 0,
 
         // Delivery configured if at least one delivery type set
-        delivery_configured: (business.deliveryTypes?.length ?? 0) > 0,
+        delivery_configured: deliveryTypes.length > 0,
 
         // Products available if at least one active product exists
-        products_available: (business.products?.length ?? 0) > 0,
+        products_available: products.length > 0,
 
         // AI energy OK if tokens > 10 (arbitrary threshold)
-        ai_energy_ok: (business.aiTokens ?? 100) > 10,
+        ai_energy_ok: (business.tokenUsage?.balance ?? business.aiTokens ?? 100) > 10,
 
         // Payout ready if identity verified
-        payout_ready: business.identityVerified ?? false,
+        payout_ready: business.identityVerified ?? (business.fulfillment?.bankDetails?.accountNumber ? true : false),
     };
 }
 

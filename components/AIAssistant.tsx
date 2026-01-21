@@ -238,65 +238,69 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1A1A1A] overflow-hidden relative border-l border-white/5 font-['Manrope']">
-      <div className={`absolute top-0 right-0 w-64 h-64 rounded-full opacity-5 blur-[100px] -translate-y-1/2 translate-x-1/2 transition-colors duration-1000 ${isEnergyLow ? 'bg-rose-500' : 'bg-[#EDFF8C]'}`}></div>
+    <div className="flex flex-col h-full bg-dark overflow-hidden relative border-l border-white/5 font-sans">
+      <div className={`absolute top-0 right-0 w-80 h-80 rounded-full opacity-10 blur-[120px] -translate-y-1/2 translate-x-1/2 transition-colors duration-1000 ${isEnergyLow ? 'bg-rose-500' : 'bg-lime'}`}></div>
+      <div className={`absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full opacity-10 blur-[100px] translate-y-1/2 -translate-x-1/2`}></div>
 
-      <div className={`p-6 border-b border-white/5 relative z-10 flex items-center justify-between bg-[#1A1A1A]/50 backdrop-blur-md`}>
+      <div className="p-6 border-b border-white/5 relative z-10 flex items-center justify-between bg-dark/40 backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${isEnergyLow ? 'bg-rose-500 text-white' : 'bg-[#EDFF8C] text-black'}`}>
-            <i className={`fa-solid ${isEnergyLow ? 'fa-battery-quarter' : 'fa-wand-magic-sparkles'} text-[14px]`}></i>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-2xl transition-all ${isEnergyLow ? 'bg-rose-500 text-white' : 'bg-lime text-dark'}`}>
+            <i className={`fa-solid ${isEnergyLow ? 'fa-battery-quarter' : 'fa-wand-magic-sparkles'} text-lg ${!isEnergyLow && 'animate-pulse-slow'}`}></i>
           </div>
           <div>
-            <h3 className="text-white font-semibold text-[15px] leading-none mb-1">Storex Assistant</h3>
-            <p className={`text-[10px] uppercase tracking-[0.15em] font-semibold ${isEnergyLow ? 'text-rose-400' : 'text-[#EDFF8C]'}`}>
-              {isEnergyLow ? 'Energy Low' : 'Live & Ready'}
-            </p>
+            <h3 className="text-white font-bold text-base tracking-tight mb-0.5">Storex Assistant</h3>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full animate-pulse-slow ${isEnergyLow ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : 'bg-lime shadow-[0_0_8px_#EDFF8C]'}`}></span>
+              <p className={`text-[10px] uppercase tracking-[0.2em] font-bold ${isEnergyLow ? 'text-rose-400' : 'text-lime'}`}>
+                {isEnergyLow ? 'Energy Critical' : 'Neural Link Active'}
+              </p>
+            </div>
           </div>
         </div>
-        <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all">
-          <i className="fa-solid fa-xmark text-lg"></i>
+        <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all border border-white/5">
+          <i className="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar relative z-10">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar relative z-10">
         {messages.map((msg, i) => (
-          <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-            <div className={`max-w-[90%] rounded-[1.5rem] ${msg.role === 'user'
-              ? (msg.type === 'image' ? 'bg-transparent' : 'bg-[#EDFF8C] text-black font-medium px-5 py-3.5 shadow-lg')
-              : 'bg-white/5 text-slate-200 border border-white/10 backdrop-blur-xl p-1'
+          <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-fade-up`} style={{ animationDelay: `${i * 0.05}s` }}>
+            <div className={`max-w-[85%] rounded-[2rem] ${msg.role === 'user'
+              ? (msg.type === 'image' ? 'bg-transparent' : 'bg-lime text-dark font-bold px-6 py-4 shadow-xl')
+              : 'bg-white/5 text-slate-200 border border-white/10 backdrop-blur-2xl p-1 shadow-soft'
               }`}>
 
-              {msg.type === 'text' && <div className="px-4 py-3"><p className="text-[14px] leading-relaxed whitespace-pre-wrap font-normal">{msg.content}</p></div>}
+              {msg.type === 'text' && <div className="px-5 py-3.5"><p className="text-[14px] leading-relaxed whitespace-pre-wrap font-medium">{msg.content}</p></div>}
               {msg.type === 'image' && (
-                <div className="rounded-2xl overflow-hidden border-2 border-[#EDFF8C] shadow-2xl w-48">
+                <div className="rounded-card overflow-hidden border-2 border-lime shadow-2xl w-56 transform hover:scale-105 transition-transform duration-500">
                   <img src={msg.image} className="w-full aspect-square object-cover" alt="User upload" />
                 </div>
               )}
 
               {msg.type === 'product_suggestion' && msg.productDraft && (
-                <div className="w-72 bg-[#1A1A1A] rounded-[1.25rem] overflow-hidden border border-white/10 shadow-2xl">
-                  <div className="h-32 relative">
-                    <img src={msg.image} className="w-full h-full object-cover" alt="Product suggestion" />
-                    <div className="absolute top-2 left-2 bg-[#EDFF8C] text-black text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-widest leading-none">Detected</div>
+                <div className="w-72 bg-dark rounded-card overflow-hidden border border-white/10 shadow-2xl">
+                  <div className="h-40 relative group">
+                    <img src={msg.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Product suggestion" />
+                    <div className="absolute top-3 left-3 bg-lime text-dark text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">Vision Detect</div>
                   </div>
-                  <div className="p-4 space-y-4">
+                  <div className="p-6 space-y-5">
                     <div>
-                      <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 block leading-none">Product Name</label>
-                      <p className="text-[14px] font-semibold text-white leading-snug">{msg.productDraft.name}</p>
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Detected Name</label>
+                      <p className="text-base font-bold text-white tracking-tight">{msg.productDraft.name}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 block leading-none">Category</label>
-                        <p className="text-[13px] font-semibold text-[#EDFF8C]">{msg.productDraft.category}</p>
+                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Category</label>
+                        <p className="text-[13px] font-bold text-lime">{msg.productDraft.category}</p>
                       </div>
                       <div>
-                        <label className="text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1.5 block leading-none">Structure</label>
-                        <p className="text-[13px] font-semibold text-white truncate">{msg.productDraft.options?.map(o => o.name).join(', ') || 'Standard'}</p>
+                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Variants</label>
+                        <p className="text-[13px] font-bold text-white truncate">{msg.productDraft.options?.map(o => o.name).join(', ') || 'Standard'}</p>
                       </div>
                     </div>
                     <button
                       onClick={() => handleConfirmProduct(msg.productDraft!)}
-                      className="w-full bg-[#EDFF8C] text-black py-2.5 rounded-xl text-[13px] font-medium hover:scale-[1.02] transition-all shadow-md"
+                      className="w-full btn-primary !rounded-xl !py-3 text-[13px] tracking-widest uppercase font-bold"
                     >
                       Confirm Details
                     </button>
@@ -305,51 +309,45 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
               )}
 
               {msg.type === 'product_summary' && msg.productDraft && (
-                <div className="w-72 bg-[#1A1A1A] rounded-[1.25rem] overflow-hidden border border-white/10 shadow-2xl">
-                  <div className="p-4 border-b border-white/5 flex gap-3 items-center">
-                    <img src={msg.productDraft.images?.[0]} className="w-12 h-12 rounded-lg object-cover" alt="Draft" />
+                <div className="w-72 bg-dark rounded-card overflow-hidden border border-white/10 shadow-2xl">
+                  <div className="p-5 border-b border-white/5 flex gap-4 items-center bg-white/5">
+                    <img src={msg.productDraft.images?.[0]} className="w-14 h-14 rounded-xl object-cover shadow-lg" alt="Draft" />
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-[13px] font-semibold text-white truncate leading-snug">{msg.productDraft.name}</h4>
-                      <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wide">{msg.productDraft.category}</p>
+                      <h4 className="text-[14px] font-bold text-white truncate leading-tight">{msg.productDraft.name}</h4>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{msg.productDraft.category}</p>
                     </div>
                   </div>
-                  <div className="p-4 space-y-3">
+                  <div className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Price</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pricing</span>
                       <div className="text-right">
                         {msg.productDraft.discount ? (
                           <>
-                            <span className="text-[11px] font-normal text-slate-500 line-through mr-2">{msg.productDraft.price?.toLocaleString()}₮</span>
-                            <span className="text-[14px] font-semibold text-white">{calculateFinalPrice(msg.productDraft).toLocaleString()}₮</span>
+                            <span className="text-[10px] font-medium text-slate-500 line-through mr-2">{msg.productDraft.price?.toLocaleString()}₮</span>
+                            <span className="text-base font-bold text-white">{calculateFinalPrice(msg.productDraft).toLocaleString()}₮</span>
                           </>
                         ) : (
-                          <span className="text-[14px] font-semibold text-white">{msg.productDraft.price?.toLocaleString()}₮</span>
+                          <span className="text-base font-bold text-white">{msg.productDraft.price?.toLocaleString()}₮</span>
                         )}
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Stock</span>
-                      <span className="text-[14px] font-semibold text-[#EDFF8C]">{msg.productDraft.stock || 0} units</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Inventory</span>
+                      <span className="text-sm font-bold text-lime">{msg.productDraft.stock || 0} units available</span>
                     </div>
-                    {msg.productDraft.options && msg.productDraft.options.length > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Variants</span>
-                        <span className="text-[12px] font-normal text-slate-300 truncate max-w-[120px]">{msg.productDraft.options.map(o => o.name).join(' & ')}</span>
-                      </div>
-                    )}
                     <button
                       onClick={() => finalizeProduct(msg.productDraft!)}
-                      className="w-full bg-[#EDFF8C] text-black py-3 rounded-xl text-[13px] font-medium uppercase tracking-wider hover:scale-[1.02] transition-all mt-2 shadow-md"
+                      className="w-full btn-primary !rounded-xl !py-4 text-[13px] tracking-widest uppercase font-bold shadow-lg"
                     >
-                      Publish Product
+                      Publish Catalog
                     </button>
                   </div>
                 </div>
               )}
 
-              <div className="flex justify-between items-center px-4 py-1.5">
-                <p className={`text-[10px] font-medium opacity-40 ${msg.role === 'user' && msg.type !== 'image' ? 'text-black' : 'text-slate-500'}`}>
-                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <div className="px-4 py-2 border-t border-white/5 mt-1">
+                <p className={`text-[9px] font-bold uppercase tracking-widest opacity-40 ${msg.role === 'user' && msg.type !== 'image' ? 'text-dark' : 'text-slate-500'}`}>
+                  Sent • {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
@@ -357,21 +355,26 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
         ))}
         {isTyping && (
           <div className="flex flex-col items-start gap-2">
-            <div className="bg-white/5 border border-white/10 rounded-[1.25rem] px-4 py-3 shadow-md">
-              <div className="flex gap-1.5 items-center">
-                <div className="w-1.5 h-1.5 bg-[#EDFF8C] rounded-full animate-bounce"></div>
-                <div className="w-1.5 h-1.5 bg-[#EDFF8C] rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                <div className="w-1.5 h-1.5 bg-[#EDFF8C] rounded-full animate-bounce [animation-delay:0.4s]"></div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl px-5 py-4 shadow-md backdrop-blur-md">
+              <div className="flex gap-2 items-center">
+                <div className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce"></div>
+                <div className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                <div className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce [animation-delay:0.4s]"></div>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      <div className="p-6 bg-[#1A1A1A] border-t border-white/5 relative z-10">
-        <form onSubmit={handleSubmit} className="flex items-center gap-3">
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-slate-400 flex items-center justify-center hover:bg-white/10 transition-all shadow-lg">
-            <i className="fa-solid fa-camera text-[16px]"></i>
+      <div className="p-6 bg-dark border-t border-white/5 relative z-10">
+        <div className="absolute inset-x-0 bottom-full h-8 bg-gradient-to-t from-dark to-transparent pointer-events-none"></div>
+        <form onSubmit={handleSubmit} className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 text-slate-400 flex items-center justify-center hover:bg-white/10 transition-all shadow-xl group border border-white/5"
+          >
+            <i className="fa-solid fa-plus text-lg group-hover:rotate-90 transition-transform"></i>
           </button>
           <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
           <div className="flex-1 relative">
@@ -379,11 +382,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type a message..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-[14px] text-white focus:ring-2 focus:ring-[#EDFF8C] transition-all outline-none pr-12 placeholder:text-slate-600 font-normal"
+              placeholder="Ask anything..."
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white focus:ring-2 focus:ring-lime transition-all outline-none pr-14 placeholder:text-slate-600 font-medium"
             />
-            <button type="submit" disabled={!inputValue.trim()} className={`absolute right-1.5 top-1.5 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg disabled:opacity-30 ${isEnergyLow ? 'bg-rose-500 text-white' : 'bg-[#EDFF8C] text-black'}`}>
-              <i className="fa-solid fa-arrow-right text-[14px]"></i>
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className={`absolute right-2 top-2 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-2xl disabled:opacity-20 ${isEnergyLow ? 'bg-rose-500 text-white' : 'bg-lime text-dark shadow-lime/20'}`}
+            >
+              <i className="fa-solid fa-arrow-up text-sm"></i>
             </button>
           </div>
         </form>

@@ -13,10 +13,10 @@ interface MessagesViewProps {
 
 type PanelView = 'profile' | 'draft' | 'active_order';
 
-const MessagesView: React.FC<MessagesViewProps> = ({ 
-  conversations, 
-  products, 
-  orders, 
+const MessagesView: React.FC<MessagesViewProps> = ({
+  conversations,
+  products,
+  orders,
   store,
   onCreateOrder,
   onUpdateOrder,
@@ -26,7 +26,7 @@ const MessagesView: React.FC<MessagesViewProps> = ({
   const [filter, setFilter] = useState<'all' | 'attention' | 'orders'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [panelView, setPanelView] = useState<PanelView>('profile');
-  
+
   const [draftItems, setDraftItems] = useState<{ productId: string, quantity: number }[]>([]);
   const [draftDelivery, setDraftDelivery] = useState<Order['deliveryMethod']>('pickup');
   const [draftPayment, setDraftPayment] = useState<Order['paymentMethod']>('bank_transfer');
@@ -115,7 +115,7 @@ const MessagesView: React.FC<MessagesViewProps> = ({
     return conversations.filter(c => {
       const matchesSearch = c.customerName.toLowerCase().includes(searchQuery.toLowerCase());
       const hasOrder = orders.some(o => o.customerName === c.customerName);
-      
+
       if (filter === 'attention') return matchesSearch && (c.status === 'requires_action' || c.unread);
       if (filter === 'orders') return matchesSearch && hasOrder;
       return matchesSearch;
@@ -133,10 +133,10 @@ const MessagesView: React.FC<MessagesViewProps> = ({
 
   const createOrderFromChat = () => {
     if (!selectedConv || draftItems.length === 0) return;
-    
+
     const total = draftItems.reduce((acc, item) => {
       const p = products.find(prod => prod.id === item.productId);
-      const price = p ? (p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value/100) : p.discount.value) : p.price) : 0;
+      const price = p ? (p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value / 100) : p.discount.value) : p.price) : 0;
       return acc + (price * item.quantity);
     }, 0);
 
@@ -179,69 +179,72 @@ const MessagesView: React.FC<MessagesViewProps> = ({
   };
 
   return (
-    <div className="flex h-[calc(100vh-10rem)] gap-0 bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm font-['Manrope'] animate-fade-in">
-      
+    <div className="flex h-[calc(100vh-10rem)] gap-0 bg-white rounded-super border border-dark/5 overflow-hidden shadow-soft font-sans animate-fade-in relative z-10">
+
       {/* 1. LEFT COLUMN: Conversation List */}
-      <div className="w-[380px] border-r border-slate-100 flex flex-col bg-slate-50/30">
-        <div className="p-6 space-y-6">
+      <div className="w-[400px] border-r border-dark/5 flex flex-col bg-bg/30">
+        <div className="p-8 space-y-8">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-snug">{lang.inbox}</h1>
-            <div className="flex gap-1.5">
-               <button onClick={() => setFilter('all')} className={`px-3 py-1 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all ${filter === 'all' ? 'bg-black text-white' : 'bg-white text-slate-400 border border-slate-200'}`}>{lang.all}</button>
-               <button onClick={() => setFilter('attention')} className={`px-3 py-1 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all ${filter === 'attention' ? 'bg-rose-500 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}>{lang.alerts}</button>
+            <h1 className="text-2xl font-bold text-dark tracking-tighter">{lang.inbox}</h1>
+            <div className="flex gap-2">
+              <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border ${filter === 'all' ? 'bg-dark text-white border-dark shadow-lg scale-105' : 'bg-white text-slate-400 border-dark/5 shadow-sm'}`}>{lang.all}</button>
+              <button onClick={() => setFilter('attention')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border ${filter === 'attention' ? 'bg-rose-500 text-white border-rose-500 shadow-lg scale-105' : 'bg-white text-slate-400 border-dark/5 shadow-sm'}`}>{lang.alerts}</button>
             </div>
           </div>
-          
+
           <div className="relative group">
-            <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-[14px]"></i>
-            <input 
-              type="text" 
+            <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-lime transition-colors"></i>
+            <input
+              type="text"
               placeholder={lang.search}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-[14px] font-normal outline-none focus:border-black transition-all placeholder:text-slate-400"
+              className="w-full bg-white border border-dark/5 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold shadow-soft focus:ring-4 focus:ring-lime/10 focus:border-lime transition-all outline-none placeholder:text-slate-300"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar">
-          {filteredConversations.map((conv) => {
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-8">
+          {filteredConversations.map((conv, i) => {
             const hasOrder = orders.some(o => o.customerName === conv.customerName && o.status !== 'completed');
+            const isActive = selectedId === conv.id;
             return (
-              <div 
+              <div
                 key={conv.id}
                 onClick={() => setSelectedId(conv.id)}
-                className={`p-6 cursor-pointer border-b border-slate-50 transition-all relative ${
-                  selectedId === conv.id ? 'bg-white shadow-[inset_4px_0_0_#1A1A1A]' : 'hover:bg-white/60'
-                }`}
+                className={`p-8 cursor-pointer transition-all relative animate-fade-up ${isActive ? 'bg-white shadow-xl scale-[0.98] rounded-2xl mx-4 my-2 border border-dark/5' : 'hover:bg-white/40 border-b border-dark/5'
+                  }`}
+                style={{ animationDelay: `${i * 0.03}s` }}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-3">
+                {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 bg-lime rounded-full -ml-1"></div>}
+
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-4">
                     <div className="relative">
-                      <div className="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center text-lg font-semibold text-slate-300">
+                      <div className={`w-14 h-14 rounded-2xl bg-bg border border-dark/5 flex items-center justify-center text-xl font-bold text-dark tracking-tighter ${isActive ? 'shadow-inner' : 'shadow-sm'}`}>
                         {conv.customerName[0]}
                       </div>
-                      <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-lg border-2 border-white flex items-center justify-center text-[8px] ${conv.channel === 'instagram' ? 'bg-pink-500 text-white' : 'bg-blue-600 text-white'}`}>
+                      <div className={`absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-xl border-2 border-white flex items-center justify-center text-[10px] shadow-sm ${conv.channel === 'instagram' ? 'bg-pink-500 text-white' : 'bg-blue-600 text-white'}`}>
                         <i className={`fa-brands fa-${conv.channel}`}></i>
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900 text-[15px] leading-snug">{conv.customerName}</h4>
-                      <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 leading-none">{conv.timestamp}</span>
+                      <h4 className="font-bold text-dark text-base tracking-tight">{conv.customerName}</h4>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mt-1 block">{conv.timestamp}</span>
                     </div>
                   </div>
                   {conv.status === 'ai_handling' && (
-                    <div className="bg-[#EDFF8C] text-black px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider border border-black/5 animate-pulse leading-none">{lang.aiActive}</div>
+                    <div className="bg-lime text-dark px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-black/5 animate-pulse-slow shadow-sm">{lang.aiActive}</div>
                   )}
                 </div>
-                
-                <p className={`text-[14px] font-normal line-clamp-1 mb-2 leading-relaxed ${conv.unread ? 'text-slate-900 font-medium' : 'text-slate-500'}`}>
+
+                <p className={`text-[13px] font-medium line-clamp-1 mb-3 leading-relaxed transition-colors ${conv.unread ? 'text-dark font-bold' : 'text-slate-500'}`}>
                   {conv.lastMessage}
                 </p>
 
                 {hasOrder && (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-indigo-50 rounded-lg text-[10px] font-medium text-indigo-600 uppercase tracking-wider border border-indigo-100 leading-none">
-                    <i className="fa-solid fa-receipt text-[9px]"></i> {lang.linked}
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-xl text-[9px] font-bold text-indigo-500 uppercase tracking-widest border border-indigo-100/50 shadow-sm">
+                    <i className="fa-solid fa-receipt text-[10px]"></i> {lang.linked}
                   </div>
                 )}
               </div>
@@ -254,74 +257,86 @@ const MessagesView: React.FC<MessagesViewProps> = ({
       <div className="flex-1 flex flex-col bg-white">
         {selectedConv ? (
           <>
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div className="p-8 border-b border-dark/5 flex justify-between items-center bg-white shrink-0 shadow-sm z-10">
               <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-bg flex items-center justify-center text-lg font-bold text-dark shadow-inner">
+                  {selectedConv.customerName[0]}
+                </div>
                 <div className="space-y-1">
-                  <h3 className="font-semibold text-lg text-slate-900 leading-snug">{selectedConv.customerName}</h3>
-                  <div className="flex items-center gap-2 leading-none">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-widest">{lang.channel}: {selectedConv.channel} • {lang.aiManaged}</p>
+                  <h3 className="font-bold text-xl text-dark tracking-tight">{selectedConv.customerName}</h3>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">{lang.channel}: {selectedConv.channel} • {lang.aiManaged}</p>
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button 
+              <div className="flex gap-3">
+                <button
                   onClick={() => setPanelView('draft')}
-                  className="px-4 py-2 bg-[#EDFF8C] text-black rounded-xl text-[12px] font-medium uppercase tracking-wider shadow-sm hover:scale-105 transition-all"
+                  className="btn-primary !px-6 !py-3 shadow-xl"
                 >
-                  <i className="fa-solid fa-plus mr-1.5 text-[10px]"></i> {lang.manualOrder}
+                  <i className="fa-solid fa-plus mr-2 text-dark/70"></i> {lang.manualOrder}
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-[#F8F9FA]/50 no-scrollbar">
-              {selectedConv.messages.map((msg) => {
+            <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-bg/40 no-scrollbar">
+              {selectedConv.messages.map((msg, i) => {
                 const detected = getDetectedProducts(msg.content);
+                const isAssistant = msg.sender === 'assistant';
+                const isUser = msg.sender === 'user';
+                const isCustomer = msg.sender === 'customer';
+
                 return (
-                  <div key={msg.id} className={`flex ${msg.sender === 'customer' ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[75%] space-y-3 ${msg.sender === 'customer' ? 'items-start' : 'items-end flex flex-col'}`}>
-                      
+                  <div
+                    key={msg.id}
+                    className={`flex ${isCustomer ? 'justify-start' : 'justify-end'} animate-fade-up`}
+                    style={{ animationDelay: `${i * 0.05}s` }}
+                  >
+                    <div className={`max-w-[80%] space-y-4 ${isCustomer ? 'items-start' : 'items-end flex flex-col'}`}>
+
                       {/* Message Bubble */}
-                      <div className={`px-5 py-3.5 rounded-[1.5rem] shadow-sm border ${
-                        msg.sender === 'assistant' 
-                          ? 'bg-[#1A1A1A] text-white border-black/5 rounded-tr-sm' 
-                          : msg.sender === 'user' 
-                            ? 'bg-[#1A1A1A]/80 text-[#EDFF8C] rounded-tr-sm border-black/10'
-                            : 'bg-white border-slate-200 text-slate-800 rounded-tl-sm'
-                      }`}>
-                        {msg.sender === 'assistant' && (
-                          <div className="flex items-center gap-2 mb-1.5 text-[#EDFF8C] text-[10px] font-medium uppercase tracking-[0.15em] leading-none">
-                            <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> {lang.aiResponse}
+                      <div className={`px-6 py-4 rounded-[2rem] shadow-premium border transition-all hover:scale-[1.01] ${isAssistant
+                        ? 'bg-dark text-white border-white/5 rounded-tr-sm'
+                        : isUser
+                          ? 'bg-dark/80 text-lime rounded-tr-sm border-white/5 backdrop-blur-md'
+                          : 'bg-white border-dark/5 text-slate-800 rounded-tl-sm'
+                        }`}>
+                        {isAssistant && (
+                          <div className="flex items-center gap-2 mb-2 text-lime text-[9px] font-bold uppercase tracking-[0.2em]">
+                            <i className="fa-solid fa-wand-magic-sparkles text-[10px] animate-pulse-slow"></i> {lang.aiResponse}
                           </div>
                         )}
-                        <p className="text-[14px] font-normal leading-relaxed">{msg.content}</p>
+                        <p className="text-base font-medium leading-relaxed">{msg.content}</p>
                       </div>
 
                       {/* Product Suggestions Rendering */}
-                      {msg.sender === 'assistant' && detected.length > 0 && (
-                        <div className="grid grid-cols-1 gap-4 w-72 animate-slide-up">
+                      {isAssistant && detected.length > 0 && (
+                        <div className="grid grid-cols-1 gap-6 w-80 animate-fade-up" style={{ animationDelay: '0.2s' }}>
                           {detected.map(p => {
-                            const finalPrice = p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value/100) : p.discount.value) : p.price;
+                            const finalPrice = p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value / 100) : p.discount.value) : p.price;
                             return (
-                              <div key={p.id} className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-xl group">
-                                <div className="h-40 bg-slate-100 relative">
-                                  <img src={p.images[0]} className="w-full h-full object-cover" />
+                              <div key={p.id} className="bg-white rounded-card border border-dark/5 overflow-hidden shadow-2xl group hover:border-lime/30 transition-all">
+                                <div className="h-44 bg-bg relative overflow-hidden">
+                                  <img src={p.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                  <div className="absolute top-4 right-4 bg-lime text-dark px-3 py-1 rounded-lg text-[10px] font-bold shadow-soft">
+                                    {p.category}
+                                  </div>
                                 </div>
-                                <div className="p-5 space-y-4">
+                                <div className="p-6 space-y-5">
                                   <div>
-                                    <h5 className="text-[15px] font-semibold text-slate-900 truncate tracking-tight leading-snug">{p.name}</h5>
-                                    <div className="flex items-center gap-2 mt-1 leading-none">
-                                      <p className="text-[14px] font-semibold text-indigo-600 tracking-tight">{finalPrice.toLocaleString()}₮</p>
+                                    <h5 className="text-lg font-bold text-dark truncate tracking-tight">{p.name}</h5>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      <p className="text-base font-bold text-indigo-500 tracking-tight">{finalPrice.toLocaleString()}₮</p>
                                     </div>
                                   </div>
-                                  <div className="flex gap-2">
-                                    <button 
-                                      onClick={() => handleAddToDraft(p.id)}
-                                      className="flex-1 bg-[#EDFF8C] text-black py-2.5 rounded-xl text-[12px] font-medium uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-sm"
-                                    >
-                                      {lang.addToOrder}
-                                    </button>
-                                  </div>
+                                  <button
+                                    onClick={() => handleAddToDraft(p.id)}
+                                    className="w-full btn-primary !py-3 !text-[11px] shadow-lg"
+                                  >
+                                    <i className="fa-solid fa-cart-plus mr-2 opacity-50"></i>
+                                    {lang.addToOrder}
+                                  </button>
                                 </div>
                               </div>
                             );
@@ -335,65 +350,97 @@ const MessagesView: React.FC<MessagesViewProps> = ({
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-300 gap-4">
-             <i className="fa-solid fa-wand-magic-sparkles text-5xl opacity-20"></i>
-             <p className="text-[14px] font-normal uppercase tracking-[0.2em] opacity-40">{lang.selectChat}</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-200 gap-6">
+            <div className="w-32 h-32 bg-bg rounded-super flex items-center justify-center text-5xl shadow-inner animate-pulse-slow">
+              <i className="fa-solid fa-wand-magic-sparkles opacity-20"></i>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.3em] opacity-40">{lang.selectChat}</p>
           </div>
         )}
       </div>
 
       {/* 3. RIGHT COLUMN: Context Panel */}
-      <div className="w-[340px] border-l border-slate-100 bg-white flex flex-col overflow-y-auto no-scrollbar">
+      <div className="w-[380px] border-l border-dark/5 bg-white flex flex-col overflow-y-auto no-scrollbar shadow-2xl z-20">
         {selectedConv ? (
-          <div className="p-8 space-y-10">
-            
+          <div className="p-10 space-y-12">
+
             {/* View Selector Tabs */}
-            <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100 shadow-inner">
-               <button onClick={() => setPanelView('profile')} className={`flex-1 py-2 rounded-xl text-[11px] font-medium uppercase tracking-widest transition-all ${panelView === 'profile' ? 'bg-white text-black shadow-sm' : 'text-slate-400'}`}>{lang.profile}</button>
-               <button onClick={() => setPanelView('draft')} className={`flex-1 py-2 rounded-xl text-[11px] font-medium uppercase tracking-widest transition-all ${panelView === 'draft' ? 'bg-white text-black shadow-sm' : 'text-slate-400'}`}>{lang.draft}</button>
-               {linkedOrder && <button onClick={() => setPanelView('active_order')} className={`flex-1 py-2 rounded-xl text-[11px] font-medium uppercase tracking-widest transition-all ${panelView === 'active_order' ? 'bg-white text-black shadow-sm' : 'text-slate-400'}`}>{lang.order}</button>}
+            <div className="flex bg-bg p-1.5 rounded-2xl border border-dark/5 shadow-inner">
+              <button onClick={() => setPanelView('profile')} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${panelView === 'profile' ? 'bg-white text-dark shadow-sm border border-dark/5' : 'text-slate-400 hover:text-dark'}`}>{lang.profile}</button>
+              <button onClick={() => setPanelView('draft')} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${panelView === 'draft' ? 'bg-white text-dark shadow-sm border border-dark/5' : 'text-slate-400 hover:text-dark'}`}>{lang.draft}</button>
+              {linkedOrder && <button onClick={() => setPanelView('active_order')} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${panelView === 'active_order' ? 'bg-white text-dark shadow-sm border border-dark/5' : 'text-slate-400 hover:text-dark'}`}>{lang.order}</button>}
             </div>
 
             {/* PROFILE VIEW */}
             {panelView === 'profile' && (
-              <div className="space-y-8 animate-fade-in">
-                <div className="text-center space-y-4">
-                   <div className="w-20 h-20 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center text-4xl font-semibold text-slate-200 mx-auto leading-none">
-                     {selectedConv.customerName[0]}
-                   </div>
-                   <div>
-                     <h3 className="text-lg font-semibold text-slate-900 tracking-tight leading-snug">{selectedConv.customerName}</h3>
-                     <p className="text-[12px] font-normal text-slate-400 uppercase tracking-widest leading-none mt-1">{selectedConv.channel}</p>
-                   </div>
+              <div className="space-y-10 animate-fade-up">
+                <div className="text-center space-y-6">
+                  <div className="w-28 h-28 rounded-super bg-bg border border-dark/5 flex items-center justify-center text-5xl font-bold text-dark tracking-tighter mx-auto shadow-premium">
+                    {selectedConv.customerName[0]}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-dark tracking-tight">{selectedConv.customerName}</h3>
+                    <div className="flex items-center justify-center gap-3 mt-2">
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border shadow-sm ${selectedConv.channel === 'instagram' ? 'bg-pink-50 text-pink-600 border-pink-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                        <i className={`fa-brands fa-${selectedConv.channel} mr-1.5`}></i>
+                        {selectedConv.channel}
+                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active now</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Customer Insights</h4>
+                  <div className="bg-bg/50 rounded-card p-6 border border-dark/5 space-y-4 shadow-inner">
+                    <div className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-dark/5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Orders</span>
+                      <span className="text-sm font-bold text-dark">12 total</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-dark/5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Spend</span>
+                      <span className="text-sm font-bold text-indigo-500">240,000₮</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* DRAFT ORDER VIEW */}
             {panelView === 'draft' && (
-              <div className="space-y-8 animate-fade-in">
-                <div className="flex items-center justify-between leading-none">
-                  <h3 className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest">{lang.newEntry}</h3>
-                  <button onClick={() => setDraftItems([])} className="text-[11px] font-medium text-rose-500 uppercase tracking-wider">{lang.clear}</button>
+              <div className="space-y-10 animate-fade-up">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{lang.newEntry}</h3>
+                  <button onClick={() => setDraftItems([])} className="text-[10px] font-bold text-rose-500 uppercase tracking-widest hover:underline decoration-2 underline-offset-4 transition-all">
+                    <i className="fa-solid fa-trash-can mr-1.5 opacity-50"></i> {lang.clear}
+                  </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {draftItems.length === 0 ? (
-                    <div className="p-12 text-center border-2 border-dashed border-slate-100 rounded-3xl">
-                       <i className="fa-solid fa-cart-plus text-slate-100 text-3xl mb-4 block"></i>
-                       <p className="text-[12px] font-medium text-slate-300 uppercase tracking-wider">{lang.noItems}</p>
+                    <div className="p-16 text-center border-2 border-dashed border-dark/5 rounded-card bg-bg/20">
+                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-200 text-2xl mx-auto mb-4 shadow-sm">
+                        <i className="fa-solid fa-cart-plus"></i>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">{lang.noItems}</p>
                     </div>
                   ) : (
                     draftItems.map(item => {
                       const p = products.find(prod => prod.id === item.productId);
-                      const finalPrice = p ? (p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value/100) : p.discount.value) : p.price) : 0;
+                      const finalPrice = p ? (p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value / 100) : p.discount.value) : p.price) : 0;
                       return (
-                        <div key={item.productId} className="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
-                          <img src={p?.images[0]} className="w-11 h-11 rounded-lg object-cover" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-semibold text-slate-900 truncate leading-snug">{p?.name}</p>
-                            <p className="text-[12px] font-normal text-slate-400 leading-none mt-1">{finalPrice.toLocaleString()}₮ × {item.quantity}</p>
+                        <div key={item.productId} className="flex items-center gap-5 p-4 bg-white rounded-2xl border border-dark/5 shadow-premium group">
+                          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 shadow-soft">
+                            <img src={p?.images[0]} className="w-full h-full object-cover" />
                           </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-dark truncate tracking-tight">{p?.name}</p>
+                            <p className="text-[11px] font-bold text-slate-400 mt-1">{finalPrice.toLocaleString()}₮ × {item.quantity}</p>
+                          </div>
+                          <button className="text-slate-200 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+                            <i className="fa-solid fa-circle-xmark"></i>
+                          </button>
                         </div>
                       );
                     })
@@ -401,38 +448,47 @@ const MessagesView: React.FC<MessagesViewProps> = ({
                 </div>
 
                 {draftItems.length > 0 && (
-                  <div className="space-y-6 pt-6 border-t border-slate-50">
+                  <div className="space-y-8 pt-8 border-t border-dark/5">
+                    <div className="space-y-5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">{lang.delivery}</label>
+                      <div className="flex gap-3">
+                        {(['courier', 'pickup'] as const).map(t => (
+                          <button key={t} onClick={() => setDraftDelivery(t)} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border ${draftDelivery === t ? 'bg-dark text-white border-dark shadow-xl scale-102' : 'bg-white text-slate-400 border-dark/5 shadow-sm hover:border-dark/20'}`}>{t}</button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="space-y-4">
-                       <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest leading-none">{lang.delivery}</label>
-                       <div className="flex gap-2">
-                          {(['courier', 'pickup'] as const).map(t => (
-                            <button key={t} onClick={() => setDraftDelivery(t)} className={`flex-1 py-2.5 rounded-xl text-[11px] font-medium uppercase tracking-wider transition-all ${draftDelivery === t ? 'bg-black text-white shadow-md' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>{t}</button>
-                          ))}
-                       </div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">{lang.payment}</label>
+                      <div className="relative">
+                        <select value={draftPayment} onChange={(e) => setDraftPayment(e.target.value as any)} className="w-full bg-white border border-dark/5 rounded-xl px-5 py-4 text-sm font-bold text-dark outline-none focus:border-lime transition-all appearance-none cursor-pointer shadow-soft">
+                          {store.fulfillment.paymentMethods.map(m => <option key={m} value={m}>{m.replace(/_/g, ' ').toUpperCase()}</option>)}
+                        </select>
+                        <i className="fa-solid fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-xs"></i>
+                      </div>
                     </div>
 
-                    <div className="space-y-3">
-                       <label className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest leading-none ml-1">{lang.payment}</label>
-                       <select value={draftPayment} onChange={(e) => setDraftPayment(e.target.value as any)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-normal outline-none focus:border-black transition-all appearance-none cursor-pointer shadow-sm">
-                          {store.fulfillment.paymentMethods.map(m => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
-                       </select>
+                    <div className="pt-8 border-t border-dark/5 flex justify-between items-end">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">{lang.total}</p>
+                        <p className="text-3xl font-bold text-dark tracking-tighter">
+                          {draftItems.reduce((acc, item) => {
+                            const p = products.find(prod => prod.id === item.productId);
+                            const price = p ? (p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value / 100) : p.discount.value) : p.price) : 0;
+                            return acc + (price * item.quantity);
+                          }, 0).toLocaleString()}₮
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="px-2 py-0.5 rounded bg-lime/10 text-lime text-[8px] font-bold uppercase tracking-widest">Auto Tax-Inc</span>
+                      </div>
                     </div>
 
-                    <div className="pt-6 border-t border-slate-100 flex justify-between items-end leading-none">
-                       <p className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest">{lang.total}</p>
-                       <p className="text-2xl font-semibold text-slate-900 tracking-tight">
-                         {draftItems.reduce((acc, item) => {
-                           const p = products.find(prod => prod.id === item.productId);
-                           const price = p ? (p.discount ? (p.discount.type === 'percentage' ? p.price * (1 - p.discount.value/100) : p.discount.value) : p.price) : 0;
-                           return acc + (price * item.quantity);
-                         }, 0).toLocaleString()}₮
-                       </p>
-                    </div>
-
-                    <button 
+                    <button
                       onClick={createOrderFromChat}
-                      className="w-full py-4 bg-black text-white rounded-2xl text-[14px] font-medium uppercase tracking-wider shadow-xl hover:bg-slate-900 transition-all hover:scale-[1.02]"
+                      className="w-full btn-primary !py-5 !text-sm !tracking-widest shadow-2xl pulse-subtle"
                     >
+                      <i className="fa-solid fa-check-circle mr-2 opacity-50"></i>
                       {lang.confirm}
                     </button>
                   </div>
@@ -442,41 +498,46 @@ const MessagesView: React.FC<MessagesViewProps> = ({
 
             {/* ACTIVE ORDER VIEW */}
             {panelView === 'active_order' && linkedOrder && (
-              <div className="space-y-8 animate-fade-in">
-                 <div className="p-8 bg-indigo-50 border border-indigo-100 rounded-[2.5rem] space-y-6 relative overflow-hidden shadow-sm">
-                    <div className="relative z-10">
-                       <p className="text-[11px] font-medium text-indigo-400 uppercase tracking-widest mb-1 leading-none">{lang.order}</p>
-                       <h4 className="text-xl font-semibold text-indigo-900 tracking-tight leading-snug">{linkedOrder.id}</h4>
-                    </div>
+              <div className="space-y-10 animate-fade-up">
+                <div className="p-10 bg-dark text-white rounded-super space-y-8 relative overflow-hidden shadow-2xl">
+                  <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12">
+                    <i className="fa-solid fa-receipt text-9xl"></i>
+                  </div>
+                  <div className="relative z-10">
+                    <p className="text-[10px] font-bold text-lime uppercase tracking-[0.3em] mb-2">{lang.order}</p>
+                    <h4 className="text-3xl font-bold tracking-tighter">{linkedOrder.id}</h4>
+                  </div>
 
-                    <div className="space-y-4">
-                       <div className="flex justify-between items-center leading-none">
-                          <span className="text-[11px] font-medium text-indigo-400 uppercase tracking-widest">{lang.lifecycle}</span>
-                          <span className="text-[11px] font-semibold text-indigo-900 uppercase tracking-widest">{linkedOrder.status}</span>
-                       </div>
-                       <div className="w-full h-1 bg-white/50 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000" style={{ width: `${( (['pending', 'confirmed', 'paid', 'completed'].indexOf(linkedOrder.status) + 1) / 4) * 100}%` }}></div>
-                       </div>
+                  <div className="space-y-6 relative z-10">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{lang.lifecycle}</span>
+                      <span className="text-[10px] font-bold text-lime uppercase tracking-widest">{linkedOrder.status}</span>
                     </div>
-                 </div>
+                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden shadow-inner">
+                      <div className="h-full bg-lime rounded-full shadow-[0_0_10px_#EDFF8C] transition-all duration-1000" style={{ width: `${((['pending', 'confirmed', 'paid', 'completed'].indexOf(linkedOrder.status) + 1) / 4) * 100}%` }}></div>
+                    </div>
+                  </div>
+                </div>
 
-                 <div className="space-y-4 pt-6">
-                    <h4 className="text-[12px] font-semibold text-slate-400 uppercase tracking-widest ml-1 leading-none">{lang.actions}</h4>
-                    <div className="grid grid-cols-1 gap-3">
-                       {linkedOrder.status === 'pending' && <button onClick={() => updateOrderStatus('confirmed')} className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl text-[13px] font-medium uppercase tracking-wider shadow-lg transition-all hover:scale-[1.02]">{lang.confirmOrder}</button>}
-                       {linkedOrder.status === 'confirmed' && <button onClick={() => updateOrderStatus('paid')} className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl text-[13px] font-medium uppercase tracking-wider shadow-lg transition-all hover:scale-[1.02]">{lang.markPaid}</button>}
-                       {linkedOrder.status === 'paid' && <button onClick={() => updateOrderStatus('completed')} className="w-full py-4 bg-emerald-600 text-white rounded-2xl text-[13px] font-medium uppercase tracking-wider shadow-lg transition-all hover:scale-[1.02]">{lang.complete}</button>}
-                       <button className="w-full py-4 bg-white border border-slate-200 text-slate-400 rounded-2xl text-[13px] font-medium uppercase tracking-wider hover:border-black hover:text-black transition-all">{lang.fullDetails}</button>
-                    </div>
-                 </div>
+                <div className="space-y-6 pt-6">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">{lang.actions}</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    {linkedOrder.status === 'pending' && <button onClick={() => updateOrderStatus('confirmed')} className="w-full btn-primary !py-4 shadow-xl">{lang.confirmOrder}</button>}
+                    {linkedOrder.status === 'confirmed' && <button onClick={() => updateOrderStatus('paid')} className="w-full btn-primary !py-4 shadow-xl">{lang.markPaid}</button>}
+                    {linkedOrder.status === 'paid' && <button onClick={() => updateOrderStatus('completed')} className="w-full bg-emerald-600 text-white rounded-2xl py-4 text-[13px] font-bold uppercase tracking-widest shadow-xl hover:bg-emerald-700 transition-all hover:scale-[1.02]">{lang.complete}</button>}
+                    <button className="w-full btn-secondary !py-4 shadow-sm">{lang.fullDetails}</button>
+                  </div>
+                </div>
               </div>
             )}
 
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-200 opacity-50 p-12 text-center">
-             <i className="fa-solid fa-lock text-4xl mb-4 block"></i>
-             <p className="text-[12px] font-semibold uppercase tracking-widest leading-none">{lang.selectChat}</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-200 p-12 text-center gap-6">
+            <div className="w-20 h-20 bg-bg rounded-card flex items-center justify-center text-3xl shadow-inner">
+              <i className="fa-solid fa-lock opacity-20"></i>
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40 leading-relaxed">{lang.selectChat}</p>
           </div>
         )}
       </div>

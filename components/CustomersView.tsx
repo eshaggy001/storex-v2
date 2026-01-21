@@ -49,8 +49,8 @@ const CustomersView: React.FC<CustomersViewProps> = ({ customers, onSelectCustom
   const lang = t[userLanguage];
 
   const filteredCustomers = useMemo(() => {
-    return customers.filter(c => 
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    return customers.filter(c =>
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (c.phoneNumber && c.phoneNumber.includes(searchQuery))
     );
   }, [customers, searchQuery]);
@@ -85,21 +85,21 @@ const CustomersView: React.FC<CustomersViewProps> = ({ customers, onSelectCustom
           </div>
         </div>
       </div>
-      
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4 w-full md:w-auto">
-          <button 
+          <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-3 px-6 py-3.5 bg-[#1A1A1A] text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-xl shrink-0"
           >
             <i className="fa-solid fa-plus text-[#EDFF8C]"></i>
             {lang.add}
           </button>
-          
+
           <div className="relative group flex-1 md:w-80">
             <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-black transition-colors"></i>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder={lang.search}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -138,8 +138,8 @@ const CustomersView: React.FC<CustomersViewProps> = ({ customers, onSelectCustom
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredCustomers.map((customer) => (
-                  <tr 
-                    key={customer.id} 
+                  <tr
+                    key={customer.id}
                     onClick={() => onSelectCustomer(customer)}
                     className="group hover:bg-slate-50 transition-colors cursor-pointer"
                   >
@@ -161,12 +161,12 @@ const CustomersView: React.FC<CustomersViewProps> = ({ customers, onSelectCustom
                     <td className="py-6 px-8">
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-2">
-                           {customer.channel === 'phone' ? (
-                             <i className="fa-solid fa-phone text-slate-400 text-xs"></i>
-                           ) : (
-                             <i className={`fa-brands ${customer.channel === 'instagram' ? 'fa-instagram text-pink-600' : 'fa-facebook text-blue-600'} text-sm`}></i>
-                           )}
-                           <span className="text-xs font-bold text-slate-600">{customer.phoneNumber || 'No phone'}</span>
+                          {customer.channel === 'phone' ? (
+                            <i className="fa-solid fa-phone text-slate-400 text-xs"></i>
+                          ) : (
+                            <i className={`fa-brands ${customer.channel === 'instagram' ? 'fa-instagram text-pink-600' : 'fa-facebook text-blue-600'} text-sm`}></i>
+                          )}
+                          <span className="text-xs font-bold text-slate-600">{customer.phoneNumber || 'No phone'}</span>
                         </div>
                       </div>
                     </td>
@@ -184,9 +184,8 @@ const CustomersView: React.FC<CustomersViewProps> = ({ customers, onSelectCustom
                       </div>
                     </td>
                     <td className="py-6 px-8">
-                      <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                        customer.status === 'returning' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                      }`}>
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${customer.status === 'returning' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                        }`}>
                         {customer.status}
                       </span>
                     </td>
@@ -199,7 +198,7 @@ const CustomersView: React.FC<CustomersViewProps> = ({ customers, onSelectCustom
       </div>
 
       {showAddModal && (
-        <AddCustomerModal 
+        <AddCustomerModal
           onClose={() => setShowAddModal(false)}
           onAdd={onAddCustomer}
         />
